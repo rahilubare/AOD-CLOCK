@@ -1,0 +1,20 @@
+package com.standby.clock
+
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
+
+class ClockStyle(val name: String, val content: @androidx.compose.runtime.Composable (Palette) -> Unit)
+
+/**
+ * The Clock View pages (swipe up/down). ADD YOUR OWN: write a @Composable that fills
+ * the screen and add one ClockStyle(...) line. The palette is the user's chosen colours.
+ */
+object ClockStyles {
+    val all: List<ClockStyle> = listOf(
+        ClockStyle("Digital") { p -> TallDigital(color = p.light) },
+        ClockStyle("Analog") { p -> MinimalAnalog(Modifier.fillMaxSize(), accent = p.light) },
+        ClockStyle("World") { p -> WorldClock(p) },
+        ClockStyle("Solar") { _ -> SolarClock() },
+        ClockStyle("Float") { p -> BigOverlapClock(p.dark, p.light) },
+    )
+}
