@@ -13,6 +13,7 @@ object Prefs {
     fun setPage(c: Context, v: Int) = sp(c).edit().putInt("view", v).apply()
     fun clockStyle(c: Context): Int = sp(c).getInt("clockStyle", 0)
     fun setClockStyle(c: Context, v: Int) = sp(c).edit().putInt("clockStyle", v).apply()
+    fun bumpOpens(c: Context): Int { val n = sp(c).getInt("opens", 0) + 1; sp(c).edit().putInt("opens", n).apply(); return n }
     fun autoEnabled(c: Context): Boolean = sp(c).getBoolean("auto", false)
     fun setAuto(c: Context, v: Boolean) = sp(c).edit().putBoolean("auto", v).apply()
     fun needCharging(c: Context): Boolean = sp(c).getBoolean("needCharging", true)

@@ -13,8 +13,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PointMode
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import java.time.ZoneId
 import java.time.ZoneOffset
@@ -37,7 +39,10 @@ fun WorldClock(p: Palette, modifier: Modifier = Modifier.fillMaxSize()) {
     val (h, m) = local.hourMinute(is24)
     val points = remember { WorldMap.points }
 
-    Box(modifier) {
+    BoxWithConstraints(modifier) {
+        val d = LocalDensity.current
+        val big = with(d) { (constraints.maxHeight * 0.16f).toSp() }
+        val small = with(d) { (constraints.maxHeight * 0.05f).toSp() }
         Canvas(Modifier.fillMaxSize()) {
             val utc = now.withZoneSameInstant(ZoneOffset.UTC)
             val mapW = minOf(size.width * 0.96f, size.height * 0.96f * 360f / LAT_SPAN)
@@ -70,8 +75,8 @@ fun WorldClock(p: Palette, modifier: Modifier = Modifier.fillMaxSize()) {
             drawCircle(Orange.copy(alpha = 0.6f), dotW * 2.4f, pin, style = Stroke(width = dotW * 0.3f))
         }
         Column(Modifier.align(Alignment.BottomStart).padding(start = 40.dp, bottom = 28.dp)) {
-            Text(city, color = Orange, fontSize = 26.sp, fontWeight = FontWeight.SemiBold)
-            Text("$h:$m", color = Color.White, fontSize = 64.sp, fontWeight = FontWeight.Medium)
+            Text(city, color = Orange, fontSize = small, fontWeight = FontWeight.SemiBold)
+            Text("$h:$m", color = Color.White, fontSize = big, fontWeight = FontWeight.Medium, letterSpacing = (-0.02).em)
         }
     }
 }

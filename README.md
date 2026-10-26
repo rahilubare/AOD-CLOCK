@@ -31,3 +31,14 @@ Xiaomi/Oppo/Vivo: also allow "Display pop-up windows while running in background
 ## Known limits
 - Auto-start only triggers while the screen is on; the screensaver (DreamService) was removed because HyperOS disables it.
 - OEM skins may hide screensaver settings.
+
+## Release build (signed with your own key)
+1. Create a key once (keep the .jks file and passwords safe, you need the same key for every update):
+   keytool -genkeypair -v -keystore standby-release.jks -alias standby -keyalg RSA -keysize 2048 -validity 10000
+2. Create keystore.properties next to settings.gradle.kts:
+   storeFile=standby-release.jks
+   storePassword=YOUR_PASSWORD
+   keyAlias=standby
+   keyPassword=YOUR_PASSWORD
+3. .\gradlew assembleRelease  ->  app\build\outputs\apk\release\app-release.apk
+Fonts: Nunito (SIL Open Font License) in res/font.

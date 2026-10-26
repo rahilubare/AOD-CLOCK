@@ -98,7 +98,7 @@ fun MinimalAnalog(modifier: Modifier = Modifier, accent: Color = Orange) {
                 strokeWidth = m * if (major) 0.012f else 0.007f,
             )
         }
-        num.textSize = m * 0.13f
+        num.textSize = m * 0.15f
         listOf(0 to "12", 90 to "3", 180 to "6", 270 to "9").forEach { (deg, t) ->
             val p = pt(deg.toFloat(), 0.82f)
             label(t, p.x, p.y, num)
@@ -108,8 +108,8 @@ fun MinimalAnalog(modifier: Modifier = Modifier, accent: Color = Orange) {
         val min = now.minute + sec / 60f
         val hr = now.hour % 12 + min / 60f
         fun hand(deg: Float, len: Float) = polar(c, deg, m * len)
-        drawLine(Color.White, c, hand(hr * 30f, 0.27f), strokeWidth = m * 0.03f, cap = StrokeCap.Round)
-        drawLine(Color.White, c, hand(min * 6f, 0.4f), strokeWidth = m * 0.03f, cap = StrokeCap.Round)
+        drawLine(Color.White, c, hand(hr * 30f, 0.30f), strokeWidth = m * 0.034f, cap = StrokeCap.Round)
+        drawLine(Color.White, c, hand(min * 6f, 0.44f), strokeWidth = m * 0.034f, cap = StrokeCap.Round)
         drawLine(accent, polar(c, sec * 6f, -m * 0.08f), hand(sec * 6f, 0.46f), strokeWidth = m * 0.008f)
         drawCircle(accent, m * 0.02f, c)
         drawCircle(Color.Black, m * 0.01f, c)

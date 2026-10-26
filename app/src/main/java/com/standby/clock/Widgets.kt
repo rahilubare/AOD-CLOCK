@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -60,7 +61,9 @@ fun WidgetStack(ids: List<String>, palette: Palette, modifier: Modifier = Modifi
         Box(modifier) {
             VerticalPager(state, Modifier.fillMaxSize()) { i -> widgets[i].content(palette) }
             if (widgets.size > 1) {
-                PageDots(widgets.size, state.currentPage, true, Modifier.align(Alignment.CenterEnd))
+                val a by rememberHintAlpha(state.currentPage, state.isScrollInProgress)
+                PageDots(widgets.size, state.currentPage, true,
+                    Modifier.align(Alignment.CenterEnd).graphicsLayer { alpha = a })
             }
         }
     }
@@ -109,7 +112,7 @@ private fun BatteryWidget(p: Palette) {
 private fun NotesWidget() {
     val lines = UiState.notes.lines().filter { it.isNotBlank() }
     Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center) {
-        Text("REMINDERS", color = Color(0xFFFF9F0A), fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        Text("Reminders", color = Color(0xFFFF9F0A), fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(12.dp))
         if (lines.isEmpty()) {
             Text("Long-press to add reminders", color = Color(0xFF8E8E93), fontSize = 20.sp)

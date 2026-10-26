@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -12,10 +14,28 @@ android {
         applicationId = "com.standby.clock"
         minSdk = 27
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
     }
-    buildTypes { release { isMinifyEnabled = false } }
+    // Release signing: create keystore.properties next to settings.gradle.kts (see README).
+    val ksFile = rootProject.file("keystore.properties")
+    signingConfigs {
+        if (ksFile.exists()) {
+            create("release") {
+                val p = Properties().apply { ksFile.inputStream().use { load(it) } }
+                storeFile = rootProject.file(p.getProperty("storeFile"))
+                storePassword = p.getProperty("storePassword")
+                keyAlias = p.getProperty("keyAlias")
+                keyPassword = p.getProperty("keyPassword")
+            }
+        }
+    }
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            if (ksFile.exists()) signingConfig = signingConfigs.getByName("release")
+        }
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

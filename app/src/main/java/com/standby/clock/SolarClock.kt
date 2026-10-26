@@ -12,8 +12,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import java.time.ZonedDateTime
 import kotlin.math.PI
@@ -64,7 +66,8 @@ fun SolarClock(modifier: Modifier = Modifier.fillMaxSize()) {
         val r = java.util.Random(7)
         List(70) { Offset(r.nextFloat(), r.nextFloat() * 0.7f) }
     }
-    Box(modifier) {
+    BoxWithConstraints(modifier) {
+        val big = with(LocalDensity.current) { (constraints.maxHeight * 0.30f).toSp() }
         Canvas(Modifier.fillMaxSize()) {
             val elev = sunElevationDeg(now)
             val (c1, c2) = skyFor(elev)
@@ -84,7 +87,7 @@ fun SolarClock(modifier: Modifier = Modifier.fillMaxSize()) {
             drawCircle(sun, size.height * 0.06f, Offset(x, y))
         }
         Text(
-            "$h:$m", color = Color.White, fontSize = 96.sp, fontWeight = FontWeight.Bold,
+            "$h:$m", color = Color.White, fontSize = big, fontWeight = FontWeight.Bold, letterSpacing = (-0.03).em,
             modifier = Modifier.align(Alignment.BottomStart).padding(start = 40.dp, bottom = 24.dp),
         )
     }

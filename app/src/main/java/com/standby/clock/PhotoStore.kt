@@ -24,7 +24,7 @@ object PhotoStore {
     fun clear(c: Context) = save(c, emptyList())
 }
 
-/** Call as a property initializer in an Activity; launch with picker.launch(arrayOf("image/*")). */
+// Call as a property initializer in an Activity, then launch it with an array of MIME types (images).
 fun ComponentActivity.registerPhotoPicker(): ActivityResultLauncher<Array<String>> =
     registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris: List<Uri> ->
         if (uris.isNotEmpty()) {
