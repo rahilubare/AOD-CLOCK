@@ -47,7 +47,7 @@ fun rememberBatteryInfo(): State<BatteryInfo> {
     return state
 }
 
-/** Next alarm set in the clock app. Needs no permission. The StandBy timer is hidden (it is registered as an alarm). */
+/** Next alarm set in the clock app. Returns null if no real user alarm is active. */
 @Composable
 fun rememberNextAlarm(): State<Long?> {
     val ctx = LocalContext.current
@@ -55,12 +55,37 @@ fun rememberNextAlarm(): State<Long?> {
     LaunchedEffect(Unit) {
         val am = ctx.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         while (true) {
-            val t = am.nextAlarmClock?.triggerTime
-            state.value = if (t != null && TimerState.endAt > 0L && abs(t - TimerState.endAt) < 2000L) null else t
-            delay(30_000)
+            state.value = getValidNextAlarm(ctx, am)
+            delay(15_000)
         }
     }
     return state
+}
+
+private fun getValidNextAlarm(ctx: Context, am: AlarmManager): Long? {
+    val info = am.nextAlarmClock ?: return null
+    val t = info.triggerTime
+    val now = System.currentTimeMillis()
+
+    // Must be in the future (at least 15 seconds) and within 7 days
+    if (t <= now + 15_000L || t > now + 7 * 86_400_000L) return null
+
+    // Ignore StandBy's own timer
+    if (TimerState.endAt > 0L && abs(t - TimerState.endAt) < 2000L) return null
+
+    val pkg = try { info.showIntent?.creatorPackage?.lowercase() } catch (e: Exception) { null }
+    val isClockPkg = pkg != null && (pkg.contains("clock") || pkg.contains("alarm"))
+
+    val sysAlarmStr = try {
+        android.provider.Settings.System.getString(ctx.contentResolver, android.provider.Settings.System.NEXT_ALARM_FORMATTED)
+    } catch (e: Exception) { null }
+
+    // If neither a clock package nor system alarm formatted string is present, it's a background service alarm
+    if (!isClockPkg && sysAlarmStr.isNullOrBlank()) {
+        return null
+    }
+
+    return t
 }
 
 fun formatAlarm(ctx: Context, t: Long): String {

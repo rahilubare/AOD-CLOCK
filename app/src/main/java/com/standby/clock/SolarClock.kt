@@ -78,13 +78,37 @@ fun SolarClock(modifier: Modifier = Modifier.fillMaxSize()) {
                 drawCircle(Color.White.copy(alpha = night * 0.8f), 2.5f, Offset(it.x * size.width, it.y * size.height))
             }
 
+            // Draw Solar path sinusoidal arc curve
+            val horizonY = size.height * 0.70f
+            val path = androidx.compose.ui.graphics.Path()
+            val steps = 80
+            for (i in 0..steps) {
+                val px = size.width * (i.toFloat() / steps)
+                val testHa = Math.toRadians((i.toFloat() / steps - 0.5) * 360.0)
+                val lat = Math.toRadians(SOLAR_LATITUDE)
+                val decl = Math.toRadians(-23.44 * cos(2.0 * PI / 365.0 * (now.dayOfYear + 10)))
+                val el = Math.toDegrees(asin(sin(lat) * sin(decl) + cos(lat) * cos(decl) * cos(testHa)))
+                val py = horizonY - (el / 90.0).toFloat() * size.height * 0.50f
+                if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
+            }
+            drawPath(
+                path,
+                Color.White.copy(alpha = 0.25f),
+                style = androidx.compose.ui.graphics.drawscope.Stroke(
+                    width = 2.dp.toPx(),
+                    pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(12f, 10f), 0f)
+                )
+            )
+
             val hours = now.hour + now.minute / 60.0 + now.second / 3600.0
             val ha = Math.toRadians(15.0 * (hours - 12.0))
             val x = size.width * (0.5f + 0.42f * sin(ha).toFloat())
-            val y = size.height * 0.78f - (elev / 90.0).toFloat().coerceIn(-0.6f, 1f) * size.height * 0.62f
+            val y = horizonY - (elev / 90.0).toFloat().coerceIn(-0.6f, 1f) * size.height * 0.50f
             val sun = if (elev > -4) Color(0xFFFFE08A) else Color(0xFFDCE6FF)
-            drawCircle(sun.copy(alpha = 0.25f), size.height * 0.14f, Offset(x, y))
-            drawCircle(sun, size.height * 0.06f, Offset(x, y))
+
+            drawCircle(sun.copy(alpha = 0.15f), size.height * 0.18f, Offset(x, y))
+            drawCircle(sun.copy(alpha = 0.35f), size.height * 0.10f, Offset(x, y))
+            drawCircle(sun, size.height * 0.055f, Offset(x, y))
         }
         Text(
             "$h:$m", color = Color.White, fontSize = big, fontWeight = FontWeight.Bold, letterSpacing = (-0.03).em,

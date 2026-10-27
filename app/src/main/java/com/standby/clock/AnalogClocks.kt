@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.foundation.layout.fillMaxSize
 import java.time.format.TextStyle as DateTextStyle
 import java.util.Locale
+import androidx.compose.ui.unit.dp
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
@@ -115,8 +116,24 @@ fun EdgeToEdgeAnalogClock(modifier: Modifier = Modifier.fillMaxSize(), accent: C
             return Offset(c.x + dx * tOuter, c.y + dy * tOuter) to tOuter
         }
 
+        // 12, 3, 6, 9 Numerals
+        val numSize = minDim * 0.16f
+        numPaint.textSize = numSize
+        val numInset = numSize * 0.55f
+
+        // "12" at top
+        label("12", c.x, c.y - hh + numInset, numPaint)
+        // "6" at bottom
+        label("6", c.x, c.y + hh - numInset * 0.85f, numPaint)
+        // "9" at left
+        val x9 = c.x - hw + numInset * 0.90f
+        label("9", x9, c.y, numPaint)
+        // "3" at right
+        val x3 = c.x + hw - numInset * 0.90f
+        label("3", x3, c.y, numPaint)
+
         // Draw tick marks
-        val tickStrokeMajor = (minDim * 0.007f).coerceIn(2.5f, 5f)
+        val tickStrokeMajor = (minDim * 0.0075f).coerceIn(2.5f, 5.5f)
         val tickStrokeMinor = (minDim * 0.0035f).coerceIn(1.2f, 3f)
 
         for (i in 0 until 60) {
@@ -127,14 +144,14 @@ fun EdgeToEdgeAnalogClock(modifier: Modifier = Modifier.fillMaxSize(), accent: C
             val (pOuter, tOuter) = rayIntersect(deg)
 
             if (i % 15 == 0) {
-                // At 0, 15, 30, 45 (12, 3, 6, 9)
+                // At 0, 15, 30, 45 (12, 3, 6, 9) - ensure rays NEVER intersect the numerals!
                 when (i) {
-                    15 -> { // 3 o'clock horizontal line from number to right edge
-                        val startX = c.x + hw * 0.88f
+                    15 -> { // 3 o'clock: ray goes from right of "3" to right edge
+                        val startX = x3 + numSize * 0.45f
                         drawLine(Color.White, Offset(startX, c.y), pOuter, strokeWidth = tickStrokeMajor)
                     }
-                    45 -> { // 9 o'clock horizontal line from left edge to number
-                        val endX = c.x - hw * 0.88f
+                    45 -> { // 9 o'clock: ray goes from left edge to left of "9"
+                        val endX = x9 - numSize * 0.45f
                         drawLine(Color.White, pOuter, Offset(endX, c.y), strokeWidth = tickStrokeMajor)
                     }
                 }
@@ -143,9 +160,9 @@ fun EdgeToEdgeAnalogClock(modifier: Modifier = Modifier.fillMaxSize(), accent: C
 
             val isMajor = i % 5 == 0
             val tInner = if (isMajor) {
-                tOuter * 0.40f
+                tOuter * 0.42f
             } else {
-                tOuter - minOf(tOuter * 0.12f, 22f)
+                tOuter - minOf(tOuter * 0.11f, 22f)
             }
             val pInner = Offset(c.x + dx * tInner, c.y + dy * tInner)
             val strokeColor = if (isMajor) Color.White else Color(0xFF5A5A5E)
@@ -154,34 +171,27 @@ fun EdgeToEdgeAnalogClock(modifier: Modifier = Modifier.fillMaxSize(), accent: C
             drawLine(strokeColor, pInner, pOuter, strokeWidth = strokeWidth)
         }
 
-        // 12, 3, 6, 9 Numerals
-        val numSize = minDim * 0.17f
-        numPaint.textSize = numSize
-        val numInset = numSize * 0.55f
-
-        // "12" at top
-        label("12", c.x, c.y - hh + numInset, numPaint)
-        // "6" at bottom
-        label("6", c.x, c.y + hh - numInset * 0.85f, numPaint)
-        // "9" at left
-        val x9 = c.x - hw + numInset * 0.95f
-        label("9", x9, c.y, numPaint)
-        // "3" at right
-        val x3 = c.x + hw - numInset * 0.95f
-        label("3", x3, c.y, numPaint)
-
         // Complications on horizontal axis
-        val compSize = minDim * 0.08f
+        val compSize = minDim * 0.075f
         dayPaint.textSize = compSize
         whitePaint.textSize = compSize
         alarmPaint.textSize = compSize
 
-        // Left Complication: Next Alarm (between 9 and center)
-        val alarmStr = nextAlarm?.let { formatAlarm(ctx, it) } ?: "6:00 AM"
-        val alarmFullText = "⏰ $alarmStr"
-        alarmPaint.textAlign = Paint.Align.LEFT
-        val alarmX = x9 + numSize * 0.70f
-        label(alarmFullText, alarmX, c.y, alarmPaint)
+        // Left Complication: Next Alarm (ONLY IF real alarm is set!)
+        val alarmStr = nextAlarm?.let { formatAlarm(ctx, it) }
+        if (alarmStr != null) {
+            alarmPaint.textAlign = Paint.Align.LEFT
+            val alarmX = x9 + numSize * 0.60f
+            label(alarmStr, alarmX + compSize * 1.4f, c.y, alarmPaint)
+
+            // Draw clean vector alarm bell icon
+            val iconX = alarmX + compSize * 0.5f
+            val iconR = compSize * 0.40f
+            val strokeW = (minDim * 0.005f).coerceIn(2f, 4f)
+            drawCircle(Orange, iconR, Offset(iconX, c.y), style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeW))
+            drawLine(Orange, Offset(iconX, c.y), Offset(iconX, c.y - iconR * 0.6f), strokeWidth = strokeW)
+            drawLine(Orange, Offset(iconX, c.y), Offset(iconX + iconR * 0.5f, c.y), strokeWidth = strokeW)
+        }
 
         // Right Complication: Date (between center and 3)
         val dayName = now.dayOfWeek.getDisplayName(DateTextStyle.SHORT, Locale.getDefault()).uppercase()
@@ -189,30 +199,30 @@ fun EdgeToEdgeAnalogClock(modifier: Modifier = Modifier.fillMaxSize(), accent: C
         dayPaint.textAlign = Paint.Align.LEFT
         whitePaint.textAlign = Paint.Align.LEFT
         val dateWidth = dayPaint.measureText(dayName) + minDim * 0.02f + whitePaint.measureText(dayNum)
-        val dateStartX = x3 - numSize * 0.70f - dateWidth
+        val dateStartX = x3 - numSize * 0.60f - dateWidth
         label(dayName, dateStartX, c.y, dayPaint)
         label(dayNum, dateStartX + dayPaint.measureText(dayName) + minDim * 0.02f, c.y, whitePaint)
 
-        // Clock Hands
+        // Clock Hands - iOS StandBy style thick rounded capsules
         val sec = now.second + now.nano / 1_000_000_000f
         val min = now.minute + sec / 60f
         val hr = now.hour % 12 + min / 60f
 
-        val hrLen = hh * 0.56f
-        val minLen = hh * 0.88f
-        val hrWidth = (minDim * 0.040f).coerceIn(10f, 18f)
-        val minWidth = (minDim * 0.032f).coerceIn(8f, 15f)
-        val secWidth = (minDim * 0.007f).coerceIn(2f, 4f)
+        val hrLen = hh * 0.52f
+        val minLen = hh * 0.82f
+        val hrWidth = (minDim * 0.046f).coerceIn(12f, 22f)
+        val minWidth = (minDim * 0.036f).coerceIn(9f, 18f)
+        val secWidth = (minDim * 0.008f).coerceIn(2.2f, 4.5f)
 
-        // Hour Hand
+        // Hour Hand (solid rounded pill capsule)
         drawLine(Color.White, c, polar(c, hr * 30f, hrLen), strokeWidth = hrWidth, cap = StrokeCap.Round)
-        // Minute Hand
+        // Minute Hand (solid rounded pill capsule)
         drawLine(Color.White, c, polar(c, min * 6f, minLen), strokeWidth = minWidth, cap = StrokeCap.Round)
         // Second Hand with Tail
-        drawLine(accent, polar(c, sec * 6f, -hh * 0.22f), polar(c, sec * 6f, hh * 0.94f), strokeWidth = secWidth)
+        drawLine(accent, polar(c, sec * 6f, -hh * 0.20f), polar(c, sec * 6f, hh * 0.92f), strokeWidth = secWidth)
         // Center Pivot
         val hubR = (minDim * 0.024f).coerceIn(6f, 12f)
         drawCircle(accent, hubR, c)
-        drawCircle(Color.Black, hubR * 0.5f, c)
+        drawCircle(Color.Black, hubR * 0.45f, c)
     }
 }

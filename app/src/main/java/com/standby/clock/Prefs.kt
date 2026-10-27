@@ -28,6 +28,10 @@ object Prefs {
     fun unlockedOk(c: Context): Boolean = sp(c).getBoolean("unlockedOk", false)
     fun setUnlockedOk(c: Context, v: Boolean) = sp(c).edit().putBoolean("unlockedOk", v).apply()
 
+    /** 0 Auto, 1 Always On, 2 Off */
+    fun nightMode(c: Context): Int = sp(c).getInt("nightMode", 0)
+    fun setNightMode(c: Context, v: Int) = sp(c).edit().putInt("nightMode", v).apply()
+
     fun calibration(c: Context): FloatArray? {
         val p = sp(c).getString("calib", null)?.split(',') ?: return null
         if (p.size != 3) return null

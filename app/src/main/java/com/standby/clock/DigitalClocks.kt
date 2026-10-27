@@ -23,12 +23,11 @@ import androidx.compose.ui.zIndex
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-/** Line box = 0.8em so the box hugs the digits (digit height is about 0.72em), centred, no stray padding. */
+/** Line box hugging the digits without clipping the glyphs. */
 private fun tight(fontSp: TextUnit, weight: FontWeight, family: FontFamily?, tracking: Float) =
     TextStyle(
-        fontSize = fontSp, lineHeight = fontSp * 0.8f, fontWeight = weight, fontFamily = family,
+        fontSize = fontSp, fontWeight = weight, fontFamily = family,
         letterSpacing = tracking.em, fontFeatureSettings = "tnum",
-        lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both),
     )
 
 /** Float: giant rounded digits that overlap in two translucent shades, with a two-dot colon. */
@@ -38,32 +37,37 @@ fun BigOverlapClock(dark: Color, light: Color, modifier: Modifier = Modifier.fil
     val is24 = rememberIs24h()
     val (h, m) = now.hourMinute(is24)
     val digits = h + m
-    val adv = rememberAdvances(RoundedFont, FontWeight.Black)
+    val boldFont = remember { FontFamily(Typeface.create("sans-serif", Typeface.BOLD)) }
+    val adv = rememberAdvances(boldFont, FontWeight.Black)
 
-    BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
+    BoxWithConstraints(modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp), contentAlignment = Alignment.Center) {
         val d = LocalDensity.current
         val n = digits.length
-        val overlapEm = 0.10f
-        val dotEm = 0.14f
-        val totalEm = n * adv.digit - n * overlapEm + dotEm
-        // widest allowed by width, tallest allowed by height (digits are ~0.72em tall)
-        val fontPx = minOf(constraints.maxWidth * 0.94f / totalEm, constraints.maxHeight * 0.86f / 0.72f)
+        val overlapEm = 0.08f
+        val dotEm = 0.09f
+        val totalEm = n * adv.digit - (n - 1) * overlapEm + dotEm
+        // widest allowed by width, tallest allowed by height with safe margin to prevent clipping
+        val fontPx = minOf(constraints.maxWidth * 0.90f / totalEm, constraints.maxHeight * 0.74f / 0.72f)
         val fontSp = with(d) { fontPx.toSp() }
         val overlap = with(d) { (fontPx * overlapEm).toDp() }
         val dot = with(d) { (fontPx * dotEm).toDp() }
-        val gap = with(d) { (fontPx * 0.26f).toDp() }
+        val gap = with(d) { (fontPx * 0.18f).toDp() }
 
         Row(horizontalArrangement = Arrangement.spacedBy(-overlap), verticalAlignment = Alignment.CenterVertically) {
             digits.forEachIndexed { i, ch ->
                 if (i == h.length) {
-                    Column(Modifier.zIndex(1f), verticalArrangement = Arrangement.spacedBy(gap)) {
+                    Column(
+                        Modifier.zIndex(1f).padding(horizontal = with(d) { (fontPx * 0.02f).toDp() }),
+                        verticalArrangement = Arrangement.spacedBy(gap),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
                         repeat(2) { Box(Modifier.size(dot).background(Color.White.copy(alpha = 0.85f), CircleShape)) }
                     }
                 }
                 Text(
                     ch.toString(),
                     color = (if (i % 2 == 0) dark else light).copy(alpha = 0.92f),
-                    style = tight(fontSp, FontWeight.Black, RoundedFont, -0.01f),
+                    style = tight(fontSp, FontWeight.Black, boldFont, -0.02f),
                     softWrap = false,
                 )
             }
@@ -84,7 +88,7 @@ fun TallDigital(modifier: Modifier = Modifier.fillMaxSize(), color: Color = Colo
     BoxWithConstraints(modifier.padding(horizontal = 20.dp), contentAlignment = Alignment.Center) {
         val d = LocalDensity.current
         val totalEm = (h.length + m.length) * adv.digit + adv.colon
-        val fontPx = minOf(constraints.maxWidth * 0.97f / totalEm, constraints.maxHeight * 0.70f / 0.72f)
+        val fontPx = minOf(constraints.maxWidth * 0.95f / totalEm, constraints.maxHeight * 0.68f / 0.72f)
         val fontSp = with(d) { fontPx.toSp() }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text("$h:$m", color = color, style = tight(fontSp, FontWeight.Bold, condensed, -0.01f), softWrap = false)
@@ -97,7 +101,7 @@ fun TallDigital(modifier: Modifier = Modifier.fillMaxSize(), color: Color = Colo
     }
 }
 
-/** Big StandBy Digital: large bold digits on left, date + weather + alarm stacked on right (iOS StandBy style). */
+/** Big StandBy Digital: solid bold digits on left, date + weather + alarm stacked on right (iOS StandBy style). */
 @Composable
 fun StandbyDigitalClock(modifier: Modifier = Modifier.fillMaxSize(), color: Color = Color(0xFF7BA7FF)) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
@@ -111,18 +115,20 @@ fun StandbyDigitalClock(modifier: Modifier = Modifier.fillMaxSize(), color: Colo
         now.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, Locale.getDefault()).uppercase() + " " + now.dayOfMonth
     }
     val alarmStr = remember(nextAlarm) {
-        nextAlarm?.let { formatAlarm(ctx, it) } ?: "No Alarm"
+        nextAlarm?.let { formatAlarm(ctx, it) }
     }
     val weatherStr = remember(w) {
         if (w != null) "${w.temp}°" else "72°"
     }
 
-    BoxWithConstraints(modifier.fillMaxSize().padding(horizontal = 28.dp, vertical = 16.dp)) {
+    val boldFont = remember { FontFamily(Typeface.create("sans-serif", Typeface.BOLD)) }
+
+    BoxWithConstraints(modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 12.dp)) {
         val d = LocalDensity.current
         val totalH = constraints.maxHeight.toFloat()
         val totalW = constraints.maxWidth.toFloat()
 
-        val timeFontPx = minOf(totalH * 0.88f / 0.72f, (totalW * 0.68f) / 2.3f)
+        val timeFontPx = minOf(totalH * 0.76f, (totalW * 0.64f) / 2.3f)
         val timeFontSp = with(d) { timeFontPx.toSp() }
 
         Row(
@@ -139,23 +145,35 @@ fun StandbyDigitalClock(modifier: Modifier = Modifier.fillMaxSize(), color: Colo
                 Text(
                     text = h,
                     color = color,
-                    style = tight(timeFontSp, FontWeight.Bold, RoundedFont, -0.02f),
+                    style = TextStyle(
+                        fontSize = timeFontSp,
+                        fontWeight = FontWeight.Black,
+                        fontFamily = boldFont,
+                        letterSpacing = (-0.03).em,
+                        fontFeatureSettings = "tnum",
+                    ),
                     softWrap = false,
                 )
                 // Colon dots
                 Column(
-                    modifier = Modifier.padding(horizontal = with(d) { (timeFontPx * 0.04f).toDp() }),
-                    verticalArrangement = Arrangement.spacedBy(with(d) { (timeFontPx * 0.22f).toDp() }),
+                    modifier = Modifier.padding(horizontal = with(d) { (timeFontPx * 0.035f).toDp() }),
+                    verticalArrangement = Arrangement.spacedBy(with(d) { (timeFontPx * 0.20f).toDp() }),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    val dotSize = with(d) { (timeFontPx * 0.12f).toDp() }
+                    val dotSize = with(d) { (timeFontPx * 0.10f).toDp() }
                     Box(Modifier.size(dotSize).background(color, CircleShape))
                     Box(Modifier.size(dotSize).background(color, CircleShape))
                 }
                 Text(
                     text = m,
                     color = color,
-                    style = tight(timeFontSp, FontWeight.Bold, RoundedFont, -0.02f),
+                    style = TextStyle(
+                        fontSize = timeFontSp,
+                        fontWeight = FontWeight.Black,
+                        fontFamily = boldFont,
+                        letterSpacing = (-0.03).em,
+                        fontFeatureSettings = "tnum",
+                    ),
                     softWrap = false,
                 )
             }
@@ -165,42 +183,44 @@ fun StandbyDigitalClock(modifier: Modifier = Modifier.fillMaxSize(), color: Colo
                 modifier = Modifier
                     .weight(0.30f)
                     .fillMaxHeight()
-                    .padding(vertical = with(d) { (totalH * 0.08f).toDp() }),
-                verticalArrangement = Arrangement.SpaceBetween,
+                    .padding(vertical = with(d) { (totalH * 0.12f).toDp() }, horizontal = 8.dp),
+                verticalArrangement = if (alarmStr != null) Arrangement.SpaceBetween else Arrangement.Center,
                 horizontalAlignment = Alignment.Start,
             ) {
                 // Top: WED 23
-                Column {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
                         text = dayStr,
                         color = color,
-                        fontSize = with(d) { (totalH * 0.10f).toSp() },
+                        fontSize = with(d) { (totalH * 0.09f).toSp() },
                         fontWeight = FontWeight.Bold,
-                        letterSpacing = (-0.01).em,
+                        letterSpacing = 0.02.em,
                     )
                     Text(
                         text = weatherStr,
                         color = Color.White,
-                        fontSize = with(d) { (totalH * 0.11f).toSp() },
+                        fontSize = with(d) { (totalH * 0.10f).toSp() },
                         fontWeight = FontWeight.Medium,
                     )
                 }
 
-                // Bottom: ⏰ Alarm
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Text(
-                        text = "⏰",
-                        fontSize = with(d) { (totalH * 0.07f).toSp() },
-                    )
-                    Text(
-                        text = alarmStr,
-                        color = Color.White,
-                        fontSize = with(d) { (totalH * 0.08f).toSp() },
-                        fontWeight = FontWeight.SemiBold,
-                    )
+                // Bottom: Alarm (ONLY IF real alarm is set!)
+                if (alarmStr != null) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(
+                            text = "⏰",
+                            fontSize = with(d) { (totalH * 0.07f).toSp() },
+                        )
+                        Text(
+                            text = alarmStr,
+                            color = Color.White,
+                            fontSize = with(d) { (totalH * 0.08f).toSp() },
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
                 }
             }
         }

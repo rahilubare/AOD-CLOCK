@@ -84,17 +84,19 @@ fun WorldClock(p: Palette, modifier: Modifier = Modifier.fillMaxSize()) {
             drawCircle(Color.White, dotW * 2.0f, pin, style = Stroke(width = dotW * 0.45f))
         }
 
-        // Top-Left: Next Alarm Complication
-        val alarmStr = nextAlarm?.let { formatAlarm(ctx, it) } ?: "6:30 AM"
-        Row(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(start = 36.dp, top = 24.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Text("⏰", fontSize = with(d) { (totalH * 0.065f).toSp() })
-            Text(alarmStr, color = Color.White, fontSize = with(d) { (totalH * 0.065f).toSp() }, fontWeight = FontWeight.SemiBold)
+        // Top-Left: Next Alarm Complication (ONLY IF real alarm is set!)
+        val alarmStr = nextAlarm?.let { formatAlarm(ctx, it) }
+        if (alarmStr != null) {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(start = 36.dp, top = 24.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text("⏰", fontSize = with(d) { (totalH * 0.065f).toSp() })
+                Text(alarmStr, color = Color.White, fontSize = with(d) { (totalH * 0.065f).toSp() }, fontWeight = FontWeight.SemiBold)
+            }
         }
 
         // Bottom-Left: Location icon + City name, and big bold time

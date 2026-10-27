@@ -90,6 +90,7 @@ class MainActivity : ComponentActivity() {
                     var needCharging by remember { mutableStateOf(Prefs.needCharging(ctx)) }
                     var unlockedOk by remember { mutableStateOf(Prefs.unlockedOk(ctx)) }
                     var sens by remember { mutableStateOf(Prefs.sensitivity(ctx)) }
+                    var nightMode by remember { mutableIntStateOf(Prefs.nightMode(ctx)) }
                     val calibrated = remember(t) { Prefs.calibration(ctx) != null }
                     val switchColors = SwitchDefaults.colors(
                         checkedTrackColor = accent,
@@ -389,6 +390,21 @@ class MainActivity : ComponentActivity() {
                                             if (selected) {
                                                 Box(Modifier.size(8.dp).background(Color.Black, CircleShape))
                                             }
+                                        }
+                                    }
+                                }
+                            }
+                            Divider2()
+                            Column(Modifier.padding(horizontal = 18.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Column {
+                                    Text("Bedside Night Mode", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                                    Text("Renders the clock in glowing red in dark rooms to avoid eye strain", color = Muted, fontSize = 13.sp)
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    listOf("Auto", "Always On", "Off").forEachIndexed { i, label ->
+                                        ChoicePill(label, nightMode == i, accent) {
+                                            nightMode = i
+                                            Prefs.setNightMode(ctx, i)
                                         }
                                     }
                                 }

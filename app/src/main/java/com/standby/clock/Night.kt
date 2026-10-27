@@ -8,7 +8,7 @@ import android.hardware.SensorManager
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 
-const val NIGHT_LUX = 8f   // below this = dark room -> red tint + dim
+const val NIGHT_LUX = 4f   // below this = truly dark room (bedside / night)
 
 @Composable
 fun rememberAmbientLux(): State<Float> {

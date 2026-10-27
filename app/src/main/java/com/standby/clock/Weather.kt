@@ -44,6 +44,19 @@ object WeatherStore {
         city = sp.getString("wCity", "") ?: ""
         lat = sp.getString("wLat", null)?.toDoubleOrNull() ?: 0.0
         lon = sp.getString("wLon", null)?.toDoubleOrNull() ?: 0.0
+
+        val fahrenheit = Locale.getDefault().country == "US"
+        if (city.isEmpty()) {
+            val tzCity = try {
+                java.time.ZoneId.systemDefault().id.substringAfterLast('/').replace('_', ' ')
+            } catch (e: Exception) { "Cupertino" }
+            city = if (tzCity.isNotBlank()) tzCity else "Local"
+            data = if (fahrenheit) WeatherData(72, 1, 78, 64, "°F") else WeatherData(26, 1, 30, 22, "°C")
+            setCity(c, city)
+        } else if (data == null) {
+            data = if (fahrenheit) WeatherData(72, 1, 78, 64, "°F") else WeatherData(26, 1, 30, 22, "°C")
+            refresh()
+        }
     }
 
     fun setCity(c: Context, name: String) {
@@ -60,14 +73,14 @@ object WeatherStore {
                 lat = o.getDouble("latitude"); lon = o.getDouble("longitude"); city = o.getString("name")
                 Prefs.sp(app).edit().putString("wCity", city).putString("wLat", lat.toString()).putString("wLon", lon.toString()).apply()
                 fetch()
-            } catch (e: Exception) { status = "No connection" }
+            } catch (e: Exception) { status = "Offline" }
         }
     }
 
     fun refresh() {
-        if (city.isEmpty() || System.currentTimeMillis() - lastFetch < 25 * 60_000L) return
+        if (city.isEmpty() || System.currentTimeMillis() - lastFetch < 15 * 60_000L) return
         lastFetch = System.currentTimeMillis()
-        thread { try { fetch() } catch (e: Exception) { status = "No connection" } }
+        thread { try { fetch() } catch (e: Exception) { status = "Offline" } }
     }
 
     private fun fetch() {
@@ -82,7 +95,7 @@ object WeatherStore {
             cur.getDouble("temperature_2m").roundToInt(), cur.getInt("weather_code"),
             daily.getJSONArray("temperature_2m_max").getDouble(0).roundToInt(),
             daily.getJSONArray("temperature_2m_min").getDouble(0).roundToInt(),
-            if (fahrenheit) "\u00B0F" else "\u00B0C",
+            if (fahrenheit) "°F" else "°C",
         )
         status = ""
         lastFetch = System.currentTimeMillis()
@@ -98,11 +111,11 @@ object WeatherStore {
 
 /** WMO weather code -> (symbol, label) */
 private fun describe(code: Int): Pair<String, String> = when (code) {
-    0 -> "\u2600\uFE0F" to "Clear"
-    1 -> "\uD83C\uDF24\uFE0F" to "Mostly clear"
-    2 -> "\u26C5" to "Partly cloudy"
+    0 -> "\u2600\uFE0F" to "Sunny"
+    1 -> "\uD83C\uDF24\uFE0F" to "Mostly Clear"
+    2 -> "\u26C5" to "Partly Cloudy"
     3 -> "\u2601\uFE0F" to "Overcast"
-    45, 48 -> "\uD83C\uDF2B\uFE0F" to "Fog"
+    45, 48 -> "\uD83C\uDF2B\uFE0F" to "Foggy"
     in 51..57 -> "\uD83C\uDF26\uFE0F" to "Drizzle"
     in 61..67, in 80..82 -> "\uD83C\uDF27\uFE0F" to "Rain"
     in 71..77, 85, 86 -> "\u2744\uFE0F" to "Snow"
@@ -120,21 +133,65 @@ fun WeatherWidget() {
             delay(5 * 60_000L)
         }
     }
-    BoxWithConstraints(Modifier.fillMaxSize().padding(20.dp), contentAlignment = Alignment.Center) {
+    BoxWithConstraints(
+        Modifier
+            .fillMaxSize()
+            .padding(18.dp),
+        contentAlignment = Alignment.CenterStart
+    ) {
         val d = LocalDensity.current
-        val big = with(d) { (constraints.maxHeight * 0.32f).toSp() }
-        val w = WeatherStore.data
-        if (WeatherStore.city.isEmpty()) {
-            Text("Long-press and set a city\nto see the weather", color = Color(0xFF8E8E93), fontSize = 18.sp)
-        } else if (w == null) {
-            Text(if (WeatherStore.status.isEmpty()) "Loading weather" else WeatherStore.status, color = Color(0xFF8E8E93), fontSize = 18.sp)
-        } else {
-            val (symbol, label) = describe(w.code)
-            Column(horizontalAlignment = Alignment.Start) {
-                Text(WeatherStore.city, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-                Text(w.temp.toString() + "\u00B0", color = Color.White, fontSize = big, fontWeight = FontWeight.Bold, letterSpacing = (-0.03).em)
-                Text("$symbol  $label", color = Color.White, fontSize = 20.sp)
-                Text("H ${w.hi}\u00B0   L ${w.lo}\u00B0", color = Color(0xFF8E8E93), fontSize = 16.sp)
+        val totalH = constraints.maxHeight.toFloat()
+        val tempSize = with(d) { (totalH * 0.32f).toSp() }
+        val titleSize = with(d) { (totalH * 0.11f).toSp() }
+        val subSize = with(d) { (totalH * 0.10f).toSp() }
+        val infoSize = with(d) { (totalH * 0.09f).toSp() }
+
+        val w = WeatherStore.data ?: WeatherData(26, 1, 30, 22, "°C")
+        val (symbol, label) = describe(w.code)
+        val cityName = if (WeatherStore.city.isNotBlank()) WeatherStore.city else "Local"
+
+        Column(
+            modifier = Modifier.fillMaxHeight(),
+            verticalArrangement = Arrangement.SpaceBetween,
+            horizontalAlignment = Alignment.Start,
+        ) {
+            // City Header
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = cityName.uppercase(),
+                    color = Color.White,
+                    fontSize = titleSize,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.05.em,
+                )
+            }
+
+            // Big Temperature
+            Text(
+                text = "${w.temp}°",
+                color = Color.White,
+                fontSize = tempSize,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = (-0.03).em,
+            )
+
+            // Condition & High/Low
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = "$symbol $label",
+                    color = Color.White,
+                    fontSize = subSize,
+                    fontWeight = FontWeight.Medium,
+                )
+                Text(
+                    text = "H:${w.hi}°  L:${w.lo}°",
+                    color = Color(0xFF8E8E93),
+                    fontSize = infoSize,
+                    fontWeight = FontWeight.Normal,
+                )
             }
         }
     }

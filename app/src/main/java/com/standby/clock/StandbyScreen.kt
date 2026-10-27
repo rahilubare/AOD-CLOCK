@@ -53,9 +53,16 @@ fun StandbyScreen(onBrightness: (Float) -> Unit, onPickPhotos: (() -> Unit)? = n
     }
 
     val lux by rememberAmbientLux()
-    var forceNight by remember { mutableStateOf(false) }
+    // 0: Auto, 1: Always On, 2: Off
+    var nightModeSetting by remember { mutableIntStateOf(Prefs.nightMode(context)) }
     var editing by remember { mutableStateOf(false) }
-    val night = forceNight || lux < NIGHT_LUX
+    val night = when (nightModeSetting) {
+        1 -> true
+        2 -> false
+        else -> lux < NIGHT_LUX
+    }
+
+    val activePalette = if (night) Palette("Night", Color(0xFF880000), Color(0xFFFF3B30)) else palette
 
     // burn-in care: dim after a minute without touch, and switch the clock off after N hours
     val touch = remember { longArrayOf(System.currentTimeMillis()) }
@@ -77,8 +84,8 @@ fun StandbyScreen(onBrightness: (Float) -> Unit, onPickPhotos: (() -> Unit)? = n
     LaunchedEffect(night, idle) {
         onBrightness(
             when {
-                night -> 0.02f
-                idle -> 0.2f
+                night -> 0.12f
+                idle -> 0.20f
                 else -> WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
             }
         )
@@ -118,16 +125,16 @@ fun StandbyScreen(onBrightness: (Float) -> Unit, onPickPhotos: (() -> Unit)? = n
                     if (!editing) detectTapGestures(
                         onLongPress = { editing = true },
                         onDoubleTap = {
-                            forceNight = !forceNight
-                            hintText = if (forceNight) "Night mode on" else "Night mode auto"
+                            nightModeSetting = (nightModeSetting + 1) % 3
+                            Prefs.setNightMode(context, nightModeSetting)
+                            hintText = when (nightModeSetting) {
+                                1 -> "Night Mode: Always On"
+                                2 -> "Night Mode: Off"
+                                else -> "Night Mode: Auto (Ambient)"
+                            }
                             hintOn = true
                         },
                     )
-                }
-                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                .drawWithContent {
-                    drawContent()
-                    if (night) drawRect(Color(0xFFB00000), blendMode = BlendMode.Multiply)
                 }
         ) {
             HorizontalPager(
@@ -140,15 +147,15 @@ fun StandbyScreen(onBrightness: (Float) -> Unit, onPickPhotos: (() -> Unit)? = n
                 else Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.displayCutout).offset(shiftX, shiftY)
                 Box(m, contentAlignment = Alignment.Center) {
                     when (page) {
-                        0 -> WidgetView(palette)
+                        0 -> WidgetView(activePalette)
                         1 -> PhotosView()
-                        else -> ClockView(palette)
+                        else -> ClockView(activePalette)
                     }
                 }
             }
 
             NotificationOverlay(Modifier.align(Alignment.TopCenter))
-            TimerOverlay(palette)
+            TimerOverlay(activePalette)
 
             AnimatedVisibility(
                 hintOn,
@@ -180,12 +187,9 @@ private fun ClockView(palette: Palette) {
         snapshotFlow { state.settledPage }.collect { Prefs.setClockStyle(ctx, it) }
     }
     val a by rememberHintAlpha(state.currentPage, state.isScrollInProgress)
-    Column(Modifier.fillMaxSize()) {
-        Box(Modifier.weight(1f).fillMaxWidth()) {
-            VerticalPager(state, Modifier.fillMaxSize()) { i -> styles[i].content(palette) }
-            PageDots(styles.size, state.currentPage, true,
-                Modifier.align(Alignment.CenterEnd).padding(end = 6.dp).graphicsLayer { alpha = a })
-        }
-        StatusLine()
+    Box(Modifier.fillMaxSize()) {
+        VerticalPager(state, Modifier.fillMaxSize()) { i -> styles[i].content(palette) }
+        PageDots(styles.size, state.currentPage, true,
+            Modifier.align(Alignment.CenterEnd).padding(end = 6.dp).graphicsLayer { alpha = a })
     }
 }
