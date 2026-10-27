@@ -20,6 +20,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -112,6 +115,18 @@ private fun SheetContent(view: Int, onDismiss: () -> Unit, onPickPhotos: (() -> 
                             modifier = Modifier.fillMaxWidth(), minLines = 2,
                         )
                     }
+                    Section("Weather city") {
+                        var q by remember { mutableStateOf(WeatherStore.city) }
+                        OutlinedTextField(
+                            value = q, onValueChange = { q = it }, singleLine = true,
+                            placeholder = { Text("City name") }, modifier = Modifier.fillMaxWidth(),
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            PillButton("Set city") { WeatherStore.setCity(ctx, q) }
+                            if (WeatherStore.status.isNotEmpty()) Text(WeatherStore.status, color = Muted, fontSize = 13.sp)
+                        }
+                        Text("Weather is fetched online from Open-Meteo. Only the city name is sent.", color = Muted, fontSize = 12.sp)
+                    }
                 }
                 else -> Section("Photo frame") {
                     if (onPickPhotos != null) {
@@ -126,7 +141,7 @@ private fun SheetContent(view: Int, onDismiss: () -> Unit, onPickPhotos: (() -> 
             Section("Timer") {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(1, 5, 10, 15, 30).forEach { min ->
-                        PillButton("$min min") { TimerState.start(min); onDismiss() }
+                        PillButton("$min min") { TimerState.start(ctx, min); onDismiss() }
                     }
                 }
             }
@@ -136,6 +151,22 @@ private fun SheetContent(view: Int, onDismiss: () -> Unit, onPickPhotos: (() -> 
                     Text("Hide text until tapped", Modifier.weight(1f), color = Color.White, fontSize = 16.sp)
                     Switch(checked = UiState.hideNotif, onCheckedChange = { UiState.setHideNotif(ctx, it) })
                 }
+            }
+
+            Section("Privacy") {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Hide reminders, photos, calendar and notification text on the lock screen", Modifier.weight(1f).padding(end = 12.dp), color = Color.White, fontSize = 16.sp)
+                    Switch(checked = UiState.hideWhenLocked, onCheckedChange = { UiState.setHideWhenLocked(ctx, it) })
+                }
+            }
+
+            Section("Turn the clock off after") {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(0 to "Never", 2 to "2 h", 4 to "4 h", 8 to "8 h").forEach { (h, label) ->
+                        PillButton(label, selected = UiState.autoOff == h) { UiState.setAutoOff(ctx, h) }
+                    }
+                }
+                Text("Protects the screen. The clock also dims after a minute without touch.", color = Muted, fontSize = 12.sp)
             }
         }
     }
@@ -164,9 +195,10 @@ private fun Swatch(p: Palette, index: Int) {
 }
 
 @Composable
-private fun PillButton(text: String, onClick: () -> Unit) {
+private fun PillButton(text: String, selected: Boolean = false, onClick: () -> Unit) {
     Box(
-        Modifier.clip(RoundedCornerShape(50)).background(Chip).clickable(onClick = onClick)
+        Modifier.clip(RoundedCornerShape(50)).background(if (selected) Color(0xFF48484A) else Chip)
+            .border(if (selected) 1.5.dp else 0.dp, Color.White, RoundedCornerShape(50)).clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 10.dp)
     ) { Text(text, color = Color.White, fontSize = 15.sp) }
 }

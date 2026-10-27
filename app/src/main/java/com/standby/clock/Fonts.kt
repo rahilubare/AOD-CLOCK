@@ -1,3 +1,4 @@
+@file:OptIn(androidx.compose.ui.text.ExperimentalTextApi::class)
 package com.standby.clock
 
 import androidx.compose.runtime.Composable
@@ -34,3 +35,4 @@ fun rememberAdvances(family: FontFamily?, weight: FontWeight): Advances {
         Advances(adv("8"), adv(":"))
     }
 }
+

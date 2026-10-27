@@ -23,8 +23,16 @@ class StandbyActivity : ComponentActivity() {
 
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        setShowWhenLocked(true)                    // show over the lock screen
-        if (autoStarted) setTurnScreenOn(true)     // wake the screen when started automatically
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+        }
+        @Suppress("DEPRECATION")
+        window.addFlags(
+            WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+            WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
+            WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
+        )
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
         if (Build.VERSION.SDK_INT >= 28) {
@@ -41,6 +49,7 @@ class StandbyActivity : ComponentActivity() {
             StandbyScreen(
                 onBrightness = { b -> window.attributes = window.attributes.apply { screenBrightness = b } },
                 onPickPhotos = { picker.launch(arrayOf("image/*")) },
+                onClose = { finish() },
             )
         }
     }

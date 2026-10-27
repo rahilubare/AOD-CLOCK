@@ -96,3 +96,113 @@ fun TallDigital(modifier: Modifier = Modifier.fillMaxSize(), color: Color = Colo
         }
     }
 }
+
+/** Big StandBy Digital: large bold digits on left, date + weather + alarm stacked on right (iOS StandBy style). */
+@Composable
+fun StandbyDigitalClock(modifier: Modifier = Modifier.fillMaxSize(), color: Color = Color(0xFF7BA7FF)) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val now by rememberNow()
+    val is24 = rememberIs24h()
+    val (h, m) = now.hourMinute(is24)
+    val nextAlarm by rememberNextAlarm()
+    val w = WeatherStore.data
+
+    val dayStr = remember(now) {
+        now.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, Locale.getDefault()).uppercase() + " " + now.dayOfMonth
+    }
+    val alarmStr = remember(nextAlarm) {
+        nextAlarm?.let { formatAlarm(ctx, it) } ?: "No Alarm"
+    }
+    val weatherStr = remember(w) {
+        if (w != null) "${w.temp}°" else "72°"
+    }
+
+    BoxWithConstraints(modifier.fillMaxSize().padding(horizontal = 28.dp, vertical = 16.dp)) {
+        val d = LocalDensity.current
+        val totalH = constraints.maxHeight.toFloat()
+        val totalW = constraints.maxWidth.toFloat()
+
+        val timeFontPx = minOf(totalH * 0.88f / 0.72f, (totalW * 0.68f) / 2.3f)
+        val timeFontSp = with(d) { timeFontPx.toSp() }
+
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            // Left: Big digits + colon
+            Row(
+                modifier = Modifier.weight(0.70f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    text = h,
+                    color = color,
+                    style = tight(timeFontSp, FontWeight.Bold, RoundedFont, -0.02f),
+                    softWrap = false,
+                )
+                // Colon dots
+                Column(
+                    modifier = Modifier.padding(horizontal = with(d) { (timeFontPx * 0.04f).toDp() }),
+                    verticalArrangement = Arrangement.spacedBy(with(d) { (timeFontPx * 0.22f).toDp() }),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    val dotSize = with(d) { (timeFontPx * 0.12f).toDp() }
+                    Box(Modifier.size(dotSize).background(color, CircleShape))
+                    Box(Modifier.size(dotSize).background(color, CircleShape))
+                }
+                Text(
+                    text = m,
+                    color = color,
+                    style = tight(timeFontSp, FontWeight.Bold, RoundedFont, -0.02f),
+                    softWrap = false,
+                )
+            }
+
+            // Right: Complications stack (Date, Weather, Alarm)
+            Column(
+                modifier = Modifier
+                    .weight(0.30f)
+                    .fillMaxHeight()
+                    .padding(vertical = with(d) { (totalH * 0.08f).toDp() }),
+                verticalArrangement = Arrangement.SpaceBetween,
+                horizontalAlignment = Alignment.Start,
+            ) {
+                // Top: WED 23
+                Column {
+                    Text(
+                        text = dayStr,
+                        color = color,
+                        fontSize = with(d) { (totalH * 0.10f).toSp() },
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.01).em,
+                    )
+                    Text(
+                        text = weatherStr,
+                        color = Color.White,
+                        fontSize = with(d) { (totalH * 0.11f).toSp() },
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
+
+                // Bottom: ⏰ Alarm
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        text = "⏰",
+                        fontSize = with(d) { (totalH * 0.07f).toSp() },
+                    )
+                    Text(
+                        text = alarmStr,
+                        color = Color.White,
+                        fontSize = with(d) { (totalH * 0.08f).toSp() },
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            }
+        }
+    }
+}

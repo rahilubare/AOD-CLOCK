@@ -14,6 +14,9 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
 
     <permission
         android:name="com.standby.clock.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
@@ -43,19 +46,28 @@
         <!-- Full-screen StandBy (landscape, screen on) -->
         <activity
             android:name="com.standby.clock.StandbyActivity"
-            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|density"
             android:exported="false"
+            android:inheritShowWhenLocked="true"
             android:launchMode="singleTop"
-            android:screenOrientation="sensorLandscape" />
+            android:screenOrientation="sensorLandscape"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true" />
 
-        <!-- Watches orientation + charging and opens StandBy automatically -->
+        <!-- Teaches the app the pose of your stand -->
+        <activity
+            android:name="com.standby.clock.CalibrateActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|density"
+            android:exported="false" />
+
+        <!-- Watches orientation and opens StandBy automatically -->
         <service
             android:name="com.standby.clock.OrientationService"
             android:exported="false"
             android:foregroundServiceType="specialUse" >
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Detects the phone being placed in landscape to open a bedside clock screen" />
+                android:value="Detects the phone resting in a stand in landscape to open a bedside clock screen" />
         </service>
 
         <receiver
@@ -63,10 +75,28 @@
             android:exported="true" >
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
 
-        <!-- Glanceable notifications (user grants Notification access in Settings) -->
+        <!-- Timer end: fires even if the app is closed -->
+        <receiver
+            android:name="com.standby.clock.TimerReceiver"
+            android:exported="false" />
+
+        <!-- Quick Settings tile -->
+        <service
+            android:name="com.standby.clock.AutoStartTile"
+            android:exported="true"
+            android:icon="@drawable/ic_tile"
+            android:label="@string/tile_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" >
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <!-- Glanceable notifications + now playing (user grants Notification access in Settings) -->
         <service
             android:name="com.standby.clock.StandbyNotificationListener"
             android:exported="true"

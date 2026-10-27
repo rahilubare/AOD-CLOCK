@@ -27,6 +27,11 @@ fun PhotosView(modifier: Modifier = Modifier.fillMaxSize()) {
     val ctx = LocalContext.current
     val photos = remember(PhotoStore.revision) { PhotoStore.load(ctx) }
 
+    if (UiState.hidePrivate) {
+        LockedPlaceholder("Photos hidden on the lock screen\nTap to unlock", modifier)
+        return
+    }
+
     if (photos.isEmpty()) {
         Box(modifier, contentAlignment = Alignment.Center) {
             Text(

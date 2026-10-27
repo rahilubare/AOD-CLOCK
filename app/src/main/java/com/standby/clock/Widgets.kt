@@ -38,6 +38,9 @@ object WidgetCatalog {
         StandbyWidget("date", "Date") { _ -> BigDate(Modifier.fillMaxSize().padding(16.dp)) },
         StandbyWidget("battery", "Battery") { p -> BatteryWidget(p) },
         StandbyWidget("notes", "Reminders") { _ -> NotesWidget() },
+        StandbyWidget("weather", "Weather") { _ -> WeatherWidget() },
+        StandbyWidget("nowplaying", "Now playing") { _ -> NowPlayingWidget() },
+        StandbyWidget("upnext", "Calendar events") { _ -> UpNextWidget() },
     )
 }
 
@@ -110,6 +113,10 @@ private fun BatteryWidget(p: Palette) {
 
 @Composable
 private fun NotesWidget() {
+    if (UiState.hidePrivate) {
+        LockedPlaceholder("Reminders hidden on the lock screen\nTap to unlock")
+        return
+    }
     val lines = UiState.notes.lines().filter { it.isNotBlank() }
     Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center) {
         Text("Reminders", color = Color(0xFFFF9F0A), fontSize = 18.sp, fontWeight = FontWeight.SemiBold)

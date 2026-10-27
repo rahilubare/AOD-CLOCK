@@ -1,5 +1,6 @@
 package com.standby.clock
 
+import android.app.KeyguardManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -16,39 +17,50 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.BatteryManager
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.os.PowerManager
-import android.os.SystemClock
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import kotlin.math.abs
 
 /**
- * The "main feature": watches the accelerometer and opens StandBy automatically when the
- * phone is stood up in landscape (and, by default, is charging).
+ * Watches the accelerometer and opens StandBy when the phone rests in its stand.
  *
- * Android blocks background apps from opening screens, so this needs the user to grant
- * "Display over other apps". A 1x1 transparent overlay window is kept while running, which
- * counts as a visible overlay (required on newer Android versions).
+ * Reliability measures:
+ *  - launch the screen directly; if Android blocks it, fall back to a full-screen notification
+ *  - warn with a notification when a permission has been lost
+ *  - screen off: uses the low-power "wake-up" accelerometer in batches (no wake lock) when the phone has one
+ *  - pauses on battery saver when not charging
+ *  - by default only opens while the phone is locked, so it never covers an app or video
  */
 class OrientationService : Service(), SensorEventListener {
 
     private lateinit var sm: SensorManager
     private lateinit var pm: PowerManager
     private lateinit var bm: BatteryManager
+    private lateinit var km: KeyguardManager
+    private val handler = Handler(Looper.getMainLooper())
 
     private val gravity = FloatArray(3)
     private var firstEvent = true
     private var landscapeSince = 0L
     private var notLandscapeSince = 0L
     private var armed = true
-    private var sensorOn = false
+    private var mode = 0                 // 0 off, 1 normal, 2 wake-up batched, 3 normal + wake lock
     private var overlay: View? = null
     private var wakeLock: PowerManager.WakeLock? = null
+    private var fallback: Runnable? = null
+
+    // cached settings (re-read in onStartCommand)
+    private var calib: FloatArray? = null
+    private var sens = 1
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) { updateSensor() }
@@ -61,6 +73,8 @@ class OrientationService : Service(), SensorEventListener {
         sm = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         pm = getSystemService(Context.POWER_SERVICE) as PowerManager
         bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
+        km = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+        running = true
         startAsForeground()
         addOverlay()
         val filter = IntentFilter().apply {
@@ -68,48 +82,66 @@ class OrientationService : Service(), SensorEventListener {
             addAction(Intent.ACTION_SCREEN_OFF)
             addAction(Intent.ACTION_POWER_CONNECTED)
             addAction(Intent.ACTION_POWER_DISCONNECTED)
+            addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED)
         }
         ContextCompat.registerReceiver(this, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        loadSettings()
         updateSensor()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        updateSensor()   // picks up a changed "only when charging" setting
+        loadSettings()
+        addOverlay()
+        mode = -1            // force re-registration
+        updateSensor()
+        if (!Settings.canDrawOverlays(this)) notifyAttention()
         return START_STICKY
     }
 
     override fun onDestroy() {
-        stopSensor()
-        syncWakeLock()
+        running = false
+        mode = -1
+        sm.unregisterListener(this)
+        syncWakeLock(false)
         try { unregisterReceiver(receiver) } catch (e: IllegalArgumentException) { }
         removeOverlay()
         super.onDestroy()
     }
 
+    private fun loadSettings() {
+        calib = Prefs.calibration(this)
+        sens = Prefs.sensitivity(this).coerceIn(0, 2)
+    }
+
     /* ---------------- sensor control ---------------- */
 
-    private fun charging() = bm.isCharging
-
     private fun updateSensor() {
-        // "Only while charging" ON  -> watch only on the charger (screen on or off).
-        // "Only while charging" OFF -> always watch (screen-off watching costs more battery).
-        val want = !Prefs.needCharging(this) || charging()
-        if (want && !sensorOn) {
-            val acc = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) ?: return
+        val screenOn = pm.isInteractive
+        val charging = bm.isCharging
+        val allowed = Prefs.autoEnabled(this) && (!Prefs.needCharging(this) || charging) && !(pm.isPowerSaveMode && !charging)
+        val acc = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        val accWake = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER, true)
+        val want = when {
+            !allowed || acc == null -> 0
+            screenOn -> 1
+            accWake != null -> 2           // low power: events arrive in 2 s batches, CPU can sleep
+            else -> 3                      // keep the CPU awake with partial wake-lock when screen is off
+        }
+        if (want != mode) {
+            sm.unregisterListener(this)
             firstEvent = true
             landscapeSince = 0L
             notLandscapeSince = 0L
-            sm.registerListener(this, acc, SensorManager.SENSOR_DELAY_NORMAL)
-            sensorOn = true
-        } else if (!want && sensorOn) {
-            stopSensor()
+            when (want) {
+                1, 3 -> sm.registerListener(this, acc, SensorManager.SENSOR_DELAY_NORMAL)
+                2 -> sm.registerListener(this, accWake, SensorManager.SENSOR_DELAY_NORMAL, 2_000_000)
+            }
+            mode = want
         }
-        syncWakeLock()
+        syncWakeLock(want == 3)
     }
 
-    /** With the screen off the CPU can sleep and stop sensor events; hold a wake lock (charging only). */
-    private fun syncWakeLock() {
-        val need = sensorOn && !pm.isInteractive
+    private fun syncWakeLock(need: Boolean) {
         if (need && wakeLock == null) {
             wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "standbyclock:watch").apply {
                 setReferenceCounted(false)
@@ -121,11 +153,6 @@ class OrientationService : Service(), SensorEventListener {
         }
     }
 
-    private fun stopSensor() {
-        if (sensorOn) sm.unregisterListener(this)
-        sensorOn = false
-    }
-
     override fun onAccuracyChanged(s: Sensor?, accuracy: Int) {}
 
     override fun onSensorChanged(e: SensorEvent) {
@@ -134,23 +161,21 @@ class OrientationService : Service(), SensorEventListener {
             firstEvent = false
             return
         }
-        // low-pass filter = gravity; what's left over = hand motion
         var motion = 0f
         for (k in 0..2) {
             gravity[k] = 0.8f * gravity[k] + 0.2f * e.values[k]
             motion += abs(e.values[k] - gravity[k])
         }
-        val now = SystemClock.elapsedRealtime()
-        val gx = abs(gravity[0])
-        val gz = abs(gravity[2])
-        // phone on its side (short edge down), upright or leaned back up to ~45 degrees
-        val landscape = gx > LANDSCAPE_G && gx > gz
+        val now = e.timestamp / 1_000_000L          // event time in ms (works with batched delivery)
+        val inPose = Orientation.isLandscapePose(gravity, calib, sens)
 
-        if (landscape) {
+        if (inPose) {
             notLandscapeSince = 0L
-            // must be resting (on a stand), not held in a moving hand
-            if (motion > MAX_MOTION || landscapeSince == 0L) landscapeSince = now
-            if (armed && now - landscapeSince >= HOLD_MS && shouldAct()) {
+            if (motion > Orientation.MAX_MOTION[sens] || landscapeSince == 0L) landscapeSince = now
+            // while unlocked (and allowed) wait twice as long: you are probably using the phone
+            val unlocked = pm.isInteractive && !km.isKeyguardLocked
+            val hold = Orientation.HOLD_MS[sens] * (if (unlocked) 2 else 1)
+            if (armed && now - landscapeSince >= hold && shouldAct(unlocked)) {
                 armed = false
                 launchStandby()
             }
@@ -158,36 +183,98 @@ class OrientationService : Service(), SensorEventListener {
             landscapeSince = 0L
             if (notLandscapeSince == 0L) notLandscapeSince = now
             if (now - notLandscapeSince >= LEAVE_MS) {
-                armed = true                       // re-arm once the phone has left landscape
-                StandbyActivity.finishIfAuto()     // pick up the phone -> StandBy closes
+                armed = true
+                StandbyActivity.finishIfAuto()
+                NotificationManagerCompat.from(this).cancel(ID_OPEN)
             }
         }
     }
 
-    private fun shouldAct(): Boolean =
+    private fun shouldAct(unlocked: Boolean): Boolean =
         Prefs.autoEnabled(this) &&
-            (!Prefs.needCharging(this) || charging()) &&
+            (!Prefs.needCharging(this) || bm.isCharging) &&
+            (!unlocked || Prefs.unlockedOk(this)) &&
             !StandbyActivity.isOpen
 
+    /* ---------------- launching ---------------- */
+
     private fun launchStandby() {
+        try {
+            val wl = pm.newWakeLock(
+                PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
+                "standbyclock:wakeup"
+            )
+            wl.acquire(3000L)
+        } catch (e: Exception) { }
+
         val i = Intent(this, StandbyActivity::class.java)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             .putExtra("auto", true)
-        try { startActivity(i) } catch (e: Exception) { /* blocked: check overlay permission */ }
+
+        val isLocked = km.isKeyguardLocked || !pm.isInteractive
+        if (isLocked) {
+            openViaNotification()
+        }
+
+        var ok = true
+        try { startActivity(i) } catch (e: Exception) { ok = false }
+        fallback?.let { handler.removeCallbacks(it) }
+        val r = Runnable { if (!StandbyActivity.isOpen) openViaNotification() }
+        fallback = r
+        handler.postDelayed(r, if (ok) 1000L else 0L)
+    }
+
+    private fun channel(id: String, name: String, importance: Int) {
+        getSystemService(NotificationManager::class.java).createNotificationChannel(NotificationChannel(id, name, importance))
+    }
+
+    private fun openViaNotification() {
+        channel("open", "Open StandBy", NotificationManager.IMPORTANCE_HIGH)
+        val pi = PendingIntent.getActivity(
+            this, 2, Intent(this, StandbyActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtra("auto", true),
+            PendingIntent.FLAG_IMMUTABLE,
+        )
+        val n = NotificationCompat.Builder(this, "open")
+            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+            .setContentTitle("Open StandBy clock")
+            .setContentText("Tap to open")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setSilent(true)
+            .setAutoCancel(true)
+            .setContentIntent(pi)
+            .setFullScreenIntent(pi, true)
+            .build()
+        try { NotificationManagerCompat.from(this).notify(ID_OPEN, n) } catch (e: SecurityException) { }
+    }
+
+    /** A permission was lost (for example Android reset it for an unused app): tell the user once in a while. */
+    private fun notifyAttention() {
+        val sp = Prefs.sp(this)
+        val last = sp.getLong("lastWarn", 0L)
+        if (System.currentTimeMillis() - last < 6 * 3_600_000L) return
+        sp.edit().putLong("lastWarn", System.currentTimeMillis()).apply()
+        channel("attention", "Needs attention", NotificationManager.IMPORTANCE_DEFAULT)
+        val pi = PendingIntent.getActivity(this, 3, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
+        val n = NotificationCompat.Builder(this, "attention")
+            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+            .setContentTitle("StandBy Clock needs a permission")
+            .setContentText("Tap to open the setup guide")
+            .setAutoCancel(true)
+            .setContentIntent(pi)
+            .build()
+        try { NotificationManagerCompat.from(this).notify(ID_ATTENTION, n) } catch (e: SecurityException) { }
     }
 
     /* ---------------- foreground notification + overlay ---------------- */
 
     private fun startAsForeground() {
-        val nm = getSystemService(NotificationManager::class.java)
-        nm.createNotificationChannel(
-            NotificationChannel("auto", "Landscape auto-start", NotificationManager.IMPORTANCE_LOW)
-        )
+        channel("auto", "Landscape auto-start", NotificationManager.IMPORTANCE_LOW)
         val pi = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
         val n = NotificationCompat.Builder(this, "auto")
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .setContentTitle("StandBy Clock is watching")
-            .setContentText("Opens when the phone is placed in landscape")
+            .setContentText("Opens when the phone rests on its side")
             .setContentIntent(pi)
             .setOngoing(true)
             .build()
@@ -198,6 +285,7 @@ class OrientationService : Service(), SensorEventListener {
         }
     }
 
+    /** A 1x1 transparent overlay: newer Android only allows background launches while an overlay is visible. */
     private fun addOverlay() {
         if (overlay != null || !Settings.canDrawOverlays(this)) return
         val lp = WindowManager.LayoutParams(
@@ -222,9 +310,10 @@ class OrientationService : Service(), SensorEventListener {
     }
 
     companion object {
-        private const val LANDSCAPE_G = 6.5f   // m/s^2 of gravity along the short edge
-        private const val MAX_MOTION = 0.45f   // above this = being held / moved
-        private const val HOLD_MS = 2500L      // must stay still in landscape this long
-        private const val LEAVE_MS = 1500L     // must leave landscape this long to close/re-arm
+        /** True while the watcher process is alive (the main screen shows this). */
+        @Volatile var running = false
+        private const val LEAVE_MS = 1500L
+        private const val ID_OPEN = 2
+        private const val ID_ATTENTION = 3
     }
 }

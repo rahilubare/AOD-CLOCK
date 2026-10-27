@@ -1,5 +1,7 @@
 package com.standby.clock
 
+import android.app.KeyguardManager
+import android.content.Context
 import android.view.WindowManager
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
@@ -27,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -39,9 +42,9 @@ import kotlinx.coroutines.delay
  * Long-press: edit. Double-tap: night mode.
  */
 @Composable
-fun StandbyScreen(onBrightness: (Float) -> Unit, onPickPhotos: (() -> Unit)? = null) {
+fun StandbyScreen(onBrightness: (Float) -> Unit, onPickPhotos: (() -> Unit)? = null, onClose: () -> Unit = {}) {
     val context = LocalContext.current
-    remember { UiState.init(context); true }
+    remember { UiState.init(context); TimerState.restore(context); WeatherStore.init(context); true }
     val palette = Palettes[UiState.palette.coerceIn(0, Palettes.lastIndex)]
 
     val viewPager = rememberPagerState(initialPage = Prefs.page(context).coerceIn(0, 2)) { 3 }
@@ -53,8 +56,32 @@ fun StandbyScreen(onBrightness: (Float) -> Unit, onPickPhotos: (() -> Unit)? = n
     var forceNight by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf(false) }
     val night = forceNight || lux < NIGHT_LUX
-    LaunchedEffect(night) {
-        onBrightness(if (night) 0.02f else WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE)
+
+    // burn-in care: dim after a minute without touch, and switch the clock off after N hours
+    val touch = remember { longArrayOf(System.currentTimeMillis()) }
+    var idle by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        val km = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+        while (true) {
+            idle = System.currentTimeMillis() - touch[0] > 60_000L
+            UiState.setLocked(km.isKeyguardLocked)
+            delay(1000)
+        }
+    }
+    LaunchedEffect(UiState.autoOff) {
+        if (UiState.autoOff > 0) {
+            delay(UiState.autoOff * 3_600_000L)
+            onClose()
+        }
+    }
+    LaunchedEffect(night, idle) {
+        onBrightness(
+            when {
+                night -> 0.02f
+                idle -> 0.2f
+                else -> WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+            }
+        )
     }
 
     // small status pill (feedback for gestures that otherwise show nothing)
@@ -78,6 +105,15 @@ fun StandbyScreen(onBrightness: (Float) -> Unit, onPickPhotos: (() -> Unit)? = n
             Modifier
                 .fillMaxSize()
                 .background(Color.Black)
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            awaitPointerEvent(PointerEventPass.Initial)
+                            touch[0] = System.currentTimeMillis()
+                            idle = false
+                        }
+                    }
+                }
                 .pointerInput(editing) {
                     if (!editing) detectTapGestures(
                         onLongPress = { editing = true },
@@ -144,9 +180,12 @@ private fun ClockView(palette: Palette) {
         snapshotFlow { state.settledPage }.collect { Prefs.setClockStyle(ctx, it) }
     }
     val a by rememberHintAlpha(state.currentPage, state.isScrollInProgress)
-    Box(Modifier.fillMaxSize()) {
-        VerticalPager(state, Modifier.fillMaxSize()) { i -> styles[i].content(palette) }
-        PageDots(styles.size, state.currentPage, true,
-            Modifier.align(Alignment.CenterEnd).padding(end = 6.dp).graphicsLayer { alpha = a })
+    Column(Modifier.fillMaxSize()) {
+        Box(Modifier.weight(1f).fillMaxWidth()) {
+            VerticalPager(state, Modifier.fillMaxSize()) { i -> styles[i].content(palette) }
+            PageDots(styles.size, state.currentPage, true,
+                Modifier.align(Alignment.CenterEnd).padding(end = 6.dp).graphicsLayer { alpha = a })
+        }
+        StatusLine()
     }
 }

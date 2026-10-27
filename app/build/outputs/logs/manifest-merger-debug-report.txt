@@ -1,9 +1,9 @@
 -- Merging decision tree log ---
 manifest
-ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:2:1-63:12
-INJECTED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:2:1-63:12
-INJECTED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:2:1-63:12
-INJECTED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:2:1-63:12
+ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:2:1-90:12
+INJECTED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:2:1-90:12
+INJECTED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:2:1-90:12
+INJECTED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:2:1-90:12
 MERGED from [io.coil-kt:coil-compose:2.7.0] C:\Users\Enix-Rahil\.gradle\caches\8.9\transforms\24671b66f28dfb9994d2daa85e9768bc\transformed\coil-compose-2.7.0\AndroidManifest.xml:2:1-7:12
 MERGED from [io.coil-kt:coil-compose-base:2.7.0] C:\Users\Enix-Rahil\.gradle\caches\8.9\transforms\082fa58f22db500aeb8cc4cbe8b0f523\transformed\coil-compose-base-2.7.0\AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.compose.material3:material3-android:1.3.0] C:\Users\Enix-Rahil\.gradle\caches\8.9\transforms\beffdd40c63aff8b81e51c1de00ea81c\transformed\material3-release\AndroidManifest.xml:17:1-22:12
@@ -86,9 +86,21 @@ uses-permission#android.permission.WAKE_LOCK
 ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:9:5-68
 	android:name
 		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:9:22-65
+uses-permission#android.permission.USE_FULL_SCREEN_INTENT
+ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:10:5-81
+	android:name
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:10:22-78
+uses-permission#android.permission.INTERNET
+ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:11:5-67
+	android:name
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:11:22-64
+uses-permission#android.permission.READ_CALENDAR
+ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:12:5-72
+	android:name
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:12:22-69
 application
-ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:11:5-62:19
-INJECTED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:11:5-62:19
+ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:14:5-89:19
+INJECTED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:14:5-89:19
 MERGED from [androidx.emoji2:emoji2:1.3.0] C:\Users\Enix-Rahil\.gradle\caches\8.9\transforms\9ba85c0cd0676950cb8be50b04d5b332\transformed\emoji2-1.3.0\AndroidManifest.xml:23:5-33:19
 MERGED from [androidx.emoji2:emoji2:1.3.0] C:\Users\Enix-Rahil\.gradle\caches\8.9\transforms\9ba85c0cd0676950cb8be50b04d5b332\transformed\emoji2-1.3.0\AndroidManifest.xml:23:5-33:19
 MERGED from [androidx.core:core:1.13.1] C:\Users\Enix-Rahil\.gradle\caches\8.9\transforms\fb84da60e70f1fe14ca0c45d989c3599\transformed\core-1.13.1\AndroidManifest.xml:28:5-89
@@ -106,85 +118,127 @@ MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\Enix-Rahil\.gradle
 	android:appComponentFactory
 		ADDED from [androidx.core:core:1.13.1] C:\Users\Enix-Rahil\.gradle\caches\8.9\transforms\fb84da60e70f1fe14ca0c45d989c3599\transformed\core-1.13.1\AndroidManifest.xml:28:18-86
 	android:label
-		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:15:9-41
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:18:9-41
 	android:roundIcon
-		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:14:9-54
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:17:9-54
 	android:icon
-		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:13:9-43
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:16:9-43
 	android:allowBackup
-		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:12:9-36
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:15:9-36
 	android:theme
-		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:16:9-45
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:19:9-45
 activity#com.standby.clock.MainActivity
-ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:18:9-25:20
+ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:21:9-28:20
 	android:exported
-		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:20:13-36
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:23:13-36
 	android:name
-		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:19:13-41
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:22:13-41
 intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
-ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:21:13-24:29
+ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:24:13-27:29
 action#android.intent.action.MAIN
-ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:22:17-69
+ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:25:17-69
 	android:name
-		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:22:25-66
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:25:25-66
 category#android.intent.category.LAUNCHER
-ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:23:17-77
+ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:26:17-77
 	android:name
-		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:23:27-74
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:26:27-74
 activity#com.standby.clock.StandbyActivity
-ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:28:9-33:90
+ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:31:9-39:117
 	android:screenOrientation
-		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:32:13-56
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:35:13-56
+	android:turnScreenOn
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:37:13-40
+	android:showWhenLocked
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:36:13-42
 	android:launchMode
-		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:31:13-43
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:34:13-43
+	android:inheritShowWhenLocked
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:38:13-49
 	android:exported
-		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:30:13-37
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:33:13-37
 	android:configChanges
-		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:33:13-87
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:39:13-114
 	android:name
-		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:29:13-44
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:32:13-44
+activity#com.standby.clock.CalibrateActivity
+ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:42:9-45:117
+	android:exported
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:44:13-37
+	android:configChanges
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:45:13-114
+	android:name
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:43:13-46
 service#com.standby.clock.OrientationService
-ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:36:9-43:19
+ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:48:9-55:19
 	android:exported
-		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:38:13-37
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:50:13-37
 	android:foregroundServiceType
-		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:39:13-55
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:51:13-55
 	android:name
-		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:37:13-47
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:49:13-47
 property#android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE
-ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:40:13-42:110
+ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:52:13-54:116
 	android:value
-		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:42:17-107
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:54:17-113
 	android:name
-		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:41:17-76
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:53:17-76
 receiver#com.standby.clock.BootReceiver
-ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:45:9-49:20
+ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:57:9-62:20
 	android:exported
-		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:45:48-71
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:57:48-71
 	android:name
-		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:45:19-47
-intent-filter#action:name:android.intent.action.BOOT_COMPLETED
-ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:46:13-48:29
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:57:19-47
+intent-filter#action:name:android.intent.action.BOOT_COMPLETED+action:name:android.intent.action.MY_PACKAGE_REPLACED
+ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:58:13-61:29
 action#android.intent.action.BOOT_COMPLETED
-ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:47:17-79
+ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:59:17-79
 	android:name
-		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:47:25-76
-service#com.standby.clock.StandbyNotificationListener
-ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:53:9-61:19
-	android:label
-		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:56:13-45
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:59:25-76
+action#android.intent.action.MY_PACKAGE_REPLACED
+ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:60:17-84
+	android:name
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:60:25-81
+receiver#com.standby.clock.TimerReceiver
+ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:65:9-76
 	android:exported
-		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:55:13-36
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:65:49-73
+	android:name
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:65:19-48
+service#com.standby.clock.AutoStartTile
+ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:68:9-77:19
+	android:label
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:72:13-47
+	android:exported
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:70:13-36
 	android:permission
-		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:57:13-87
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:73:13-77
+	android:icon
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:71:13-45
 	android:name
-		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:54:13-56
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:69:13-42
+intent-filter#action:name:android.service.quicksettings.action.QS_TILE
+ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:74:13-76:29
+action#android.service.quicksettings.action.QS_TILE
+ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:75:17-87
+	android:name
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:75:25-84
+service#com.standby.clock.StandbyNotificationListener
+ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:80:9-88:19
+	android:label
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:83:13-45
+	android:exported
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:82:13-36
+	android:permission
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:84:13-87
+	android:name
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:81:13-56
 intent-filter#action:name:android.service.notification.NotificationListenerService
-ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:58:13-60:29
+ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:85:13-87:29
 action#android.service.notification.NotificationListenerService
-ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:59:17-99
+ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:86:17-99
 	android:name
-		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:59:25-96
+		ADDED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml:86:25-96
 uses-sdk
 INJECTED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from C:\VM2\StandbyClock\app\src\main\AndroidManifest.xml

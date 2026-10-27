@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">StandBy Clock</string>
+    <string name="tile_label">StandBy</string>
 </resources>

@@ -42,3 +42,13 @@ Xiaomi/Oppo/Vivo: also allow "Display pop-up windows while running in background
    keyPassword=YOUR_PASSWORD
 3. .\gradlew assembleRelease  ->  app\build\outputs\apk\release\app-release.apk
 Fonts: Nunito (SIL Open Font License) in res/font.
+
+## Reliability notes
+- Watcher: foreground service; the main screen shows "Watcher is running / not running" with a Restart button; Quick Settings tile restarts it too.
+- Android blocks background launches: if the direct launch fails, a full-screen notification opens the clock instead.
+- Opens only while the phone is LOCKED by default (so it never covers a video). Setting: "Also open when the phone is unlocked".
+- Calibration: any stand angle, any device. Sensitivity: Relaxed / Balanced / Strict.
+- Lock screen privacy: reminders, photos, calendar and notification text are hidden while locked (setting).
+- Timer uses a system alarm clock entry: rings on the alarm volume even if the app was closed.
+- Photos are copied into app storage (resized). Weather: Open-Meteo, only the city name is sent.
+- Not covered: UI text is English only; untested on brands other than the author's phone.

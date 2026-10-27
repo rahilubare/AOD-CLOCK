@@ -11,10 +11,12 @@ class ClockStyle(val name: String, val content: @androidx.compose.runtime.Compos
  */
 object ClockStyles {
     val all: List<ClockStyle> = listOf(
-        ClockStyle("Digital") { p -> TallDigital(color = p.light) },
         ClockStyle("Analog") { p -> MinimalAnalog(Modifier.fillMaxSize(), accent = p.light) },
+        ClockStyle("Digital") { p -> StandbyDigitalClock(color = p.light) },
         ClockStyle("World") { p -> WorldClock(p) },
         ClockStyle("Solar") { _ -> SolarClock() },
         ClockStyle("Float") { p -> BigOverlapClock(p.dark, p.light) },
+        ClockStyle("Classic") { p -> ClassicAnalog(Modifier.fillMaxSize(), accent = p.light) },
+        ClockStyle("Tall") { p -> TallDigital(color = p.light) },
     )
 }
