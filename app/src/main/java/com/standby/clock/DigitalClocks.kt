@@ -101,7 +101,7 @@ fun TallDigital(modifier: Modifier = Modifier.fillMaxSize(), color: Color = Colo
     }
 }
 
-/** Big StandBy Digital: solid bold digits on left, date + weather + alarm stacked on right (iOS StandBy style). */
+/** Big StandBy Digital: bold digits on the left, date + battery + alarm on the right. */
 @Composable
 fun StandbyDigitalClock(modifier: Modifier = Modifier.fillMaxSize(), color: Color = Color(0xFF7BA7FF)) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
@@ -109,7 +109,7 @@ fun StandbyDigitalClock(modifier: Modifier = Modifier.fillMaxSize(), color: Colo
     val is24 = rememberIs24h()
     val (h, m) = now.hourMinute(is24)
     val nextAlarm by rememberNextAlarm()
-    val w = WeatherStore.data
+    val battery by rememberBatteryInfo()
 
     val dayStr = remember(now) {
         now.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, Locale.getDefault()).uppercase() + " " + now.dayOfMonth
@@ -117,9 +117,7 @@ fun StandbyDigitalClock(modifier: Modifier = Modifier.fillMaxSize(), color: Colo
     val alarmStr = remember(nextAlarm) {
         nextAlarm?.let { formatAlarm(ctx, it) }
     }
-    val weatherStr = remember(w) {
-        if (w != null) "${w.temp}°" else "72°"
-    }
+    val batteryStr = if (battery.charging) "⚡ ${battery.pct}%" else "${battery.pct}%"
 
     val boldFont = remember { FontFamily(Typeface.create("sans-serif", Typeface.BOLD)) }
 
@@ -178,16 +176,14 @@ fun StandbyDigitalClock(modifier: Modifier = Modifier.fillMaxSize(), color: Colo
                 )
             }
 
-            // Right: Complications stack (Date, Weather, Alarm)
             Column(
                 modifier = Modifier
                     .weight(0.30f)
                     .fillMaxHeight()
-                    .padding(vertical = with(d) { (totalH * 0.12f).toDp() }, horizontal = 8.dp),
-                verticalArrangement = if (alarmStr != null) Arrangement.SpaceBetween else Arrangement.Center,
+                    .padding(vertical = with(d) { (totalH * 0.10f).toDp() }, horizontal = 8.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
                 horizontalAlignment = Alignment.Start,
             ) {
-                // Top: WED 23
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
                         text = dayStr,
@@ -197,23 +193,18 @@ fun StandbyDigitalClock(modifier: Modifier = Modifier.fillMaxSize(), color: Colo
                         letterSpacing = 0.02.em,
                     )
                     Text(
-                        text = weatherStr,
+                        text = batteryStr,
                         color = Color.White,
                         fontSize = with(d) { (totalH * 0.10f).toSp() },
                         fontWeight = FontWeight.Medium,
                     )
                 }
-
-                // Bottom: Alarm (ONLY IF real alarm is set!)
                 if (alarmStr != null) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        Text(
-                            text = "⏰",
-                            fontSize = with(d) { (totalH * 0.07f).toSp() },
-                        )
+                        Text("⏰", fontSize = with(d) { (totalH * 0.07f).toSp() })
                         Text(
                             text = alarmStr,
                             color = Color.White,
@@ -223,6 +214,65 @@ fun StandbyDigitalClock(modifier: Modifier = Modifier.fillMaxSize(), color: Colo
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun DualClock(palette: Palette, modifier: Modifier = Modifier.fillMaxSize()) {
+    val now by rememberNow(1_000)
+    val is24 = rememberIs24h()
+    val otherZone = remember {
+        val here = java.time.ZoneId.systemDefault()
+        if (here.id == "UTC" || here.id == "Etc/UTC") java.time.ZoneId.of("America/New_York")
+        else java.time.ZoneId.of("UTC")
+    }
+    val other = now.withZoneSameInstant(otherZone)
+    val (lh, lm) = now.hourMinute(is24)
+    val (oh, om) = other.hourMinute(is24)
+    val hereName = remember { java.time.ZoneId.systemDefault().id.substringAfterLast('/').replace('_', ' ') }
+    val otherName = remember(otherZone) { otherZone.id.substringAfterLast('/').replace('_', ' ') }
+    BoxWithConstraints(modifier.padding(horizontal = 32.dp, vertical = 20.dp)) {
+        val d = LocalDensity.current
+        val big = with(d) { (constraints.maxHeight * 0.28f).toSp() }
+        val small = with(d) { (constraints.maxHeight * 0.07f).toSp() }
+        Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceEvenly) {
+            Column(horizontalAlignment = Alignment.Start) {
+                Text(hereName.uppercase(), color = Color(0xFF8E8E93), fontSize = small, fontWeight = FontWeight.SemiBold, letterSpacing = 0.08.em)
+                Text("$lh:$lm", color = palette.light, fontSize = big, fontWeight = FontWeight.Black, letterSpacing = (-0.03).em)
+            }
+            Column(horizontalAlignment = Alignment.Start) {
+                Text(otherName.uppercase(), color = Color(0xFF8E8E93), fontSize = small, fontWeight = FontWeight.SemiBold, letterSpacing = 0.08.em)
+                Text("$oh:$om", color = Color.White, fontSize = big, fontWeight = FontWeight.Black, letterSpacing = (-0.03).em)
+            }
+        }
+    }
+}
+
+@Composable
+fun SecondsClock(palette: Palette, modifier: Modifier = Modifier.fillMaxSize()) {
+    val now by rememberNow(40)
+    val is24 = rememberIs24h()
+    val (h, m) = now.hourMinute(is24)
+    val sec = "%02d".format(now.second)
+    BoxWithConstraints(modifier.padding(horizontal = 28.dp)) {
+        val d = LocalDensity.current
+        val timePx = minOf(constraints.maxHeight * 0.42f, constraints.maxWidth * 0.22f)
+        Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                "$h:$m",
+                color = palette.light,
+                fontSize = with(d) { timePx.toSp() },
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-0.04).em,
+            )
+            Text(
+                sec,
+                color = Color.White.copy(alpha = 0.85f),
+                fontSize = with(d) { (timePx * 0.38f).toSp() },
+                fontWeight = FontWeight.Medium,
+                letterSpacing = 0.12.em,
+            )
         }
     }
 }

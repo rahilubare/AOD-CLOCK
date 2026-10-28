@@ -1,20 +1,34 @@
 package com.standby.clock
 
 import android.app.AlarmManager
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
 import android.os.Build
+import android.provider.Settings
 import android.text.format.DateFormat
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.delay
 import java.util.Date
 import kotlin.math.abs
@@ -23,7 +37,7 @@ class BatteryInfo(val pct: Int, val charging: Boolean, val remainingMs: Long)
 
 fun readBattery(ctx: Context): BatteryInfo {
     val i = ctx.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-    val level = i?.getIntExtra(BatteryManager.EXTRA_LEVEL, 0) ?: 0
+    val level = i?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
     val scale = i?.getIntExtra(BatteryManager.EXTRA_SCALE, 100) ?: 100
     val st = i?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
     val charging = st == BatteryManager.BATTERY_STATUS_CHARGING || st == BatteryManager.BATTERY_STATUS_FULL
@@ -31,61 +45,64 @@ fun readBattery(ctx: Context): BatteryInfo {
     if (Build.VERSION.SDK_INT >= 28 && charging) {
         remaining = (ctx.getSystemService(Context.BATTERY_SERVICE) as BatteryManager).computeChargeTimeRemaining()
     }
-    return BatteryInfo(if (scale > 0) level * 100 / scale else 0, charging, remaining)
+    val pct = if (level >= 0 && scale > 0) (level * 100f / scale).toInt().coerceIn(0, 100) else 0
+    return BatteryInfo(pct, charging, remaining)
 }
 
 @Composable
 fun rememberBatteryInfo(): State<BatteryInfo> {
     val ctx = LocalContext.current
-    val state = remember { mutableStateOf(BatteryInfo(0, false, -1L)) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            state.value = readBattery(ctx)
-            delay(15_000)
+    val state = remember { mutableStateOf(readBattery(ctx)) }
+    DisposableEffect(Unit) {
+        val r = object : BroadcastReceiver() {
+            override fun onReceive(c: Context?, i: Intent?) { state.value = readBattery(ctx) }
         }
+        ContextCompat.registerReceiver(ctx, r, IntentFilter(Intent.ACTION_BATTERY_CHANGED), ContextCompat.RECEIVER_EXPORTED)
+        onDispose { try { ctx.unregisterReceiver(r) } catch (_: Exception) { } }
     }
     return state
 }
 
-/** Next alarm set in the clock app. Returns null if no real user alarm is active. */
+/** Next alarm from the system clock app. Null if none is set. */
 @Composable
 fun rememberNextAlarm(): State<Long?> {
     val ctx = LocalContext.current
-    val state = remember { mutableStateOf<Long?>(null) }
+    val state = remember { mutableStateOf(getValidNextAlarm(ctx)) }
+    DisposableEffect(Unit) {
+        val r = object : BroadcastReceiver() {
+            override fun onReceive(c: Context?, i: Intent?) { state.value = getValidNextAlarm(ctx) }
+        }
+        val f = IntentFilter(AlarmManager.ACTION_NEXT_ALARM_CLOCK_CHANGED)
+        ContextCompat.registerReceiver(ctx, r, f, ContextCompat.RECEIVER_EXPORTED)
+        onDispose { try { ctx.unregisterReceiver(r) } catch (_: Exception) { } }
+    }
     LaunchedEffect(Unit) {
-        val am = ctx.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         while (true) {
-            state.value = getValidNextAlarm(ctx, am)
-            delay(15_000)
+            delay(20_000)
+            state.value = getValidNextAlarm(ctx)
         }
     }
     return state
 }
 
-private fun getValidNextAlarm(ctx: Context, am: AlarmManager): Long? {
-    val info = am.nextAlarmClock ?: return null
-    val t = info.triggerTime
+fun getValidNextAlarm(ctx: Context): Long? {
+    val am = ctx.getSystemService(Context.ALARM_SERVICE) as AlarmManager
     val now = System.currentTimeMillis()
-
-    // Must be in the future (at least 15 seconds) and within 7 days
-    if (t <= now + 15_000L || t > now + 7 * 86_400_000L) return null
-
-    // Ignore StandBy's own timer
-    if (TimerState.endAt > 0L && abs(t - TimerState.endAt) < 2000L) return null
-
-    val pkg = try { info.showIntent?.creatorPackage?.lowercase() } catch (e: Exception) { null }
-    val isClockPkg = pkg != null && (pkg.contains("clock") || pkg.contains("alarm"))
-
-    val sysAlarmStr = try {
-        android.provider.Settings.System.getString(ctx.contentResolver, android.provider.Settings.System.NEXT_ALARM_FORMATTED)
-    } catch (e: Exception) { null }
-
-    // If neither a clock package nor system alarm formatted string is present, it's a background service alarm
-    if (!isClockPkg && sysAlarmStr.isNullOrBlank()) {
-        return null
+    val info = am.nextAlarmClock
+    if (info != null) {
+        val t = info.triggerTime
+        val ours = TimerState.endAt > 0L && abs(t - TimerState.endAt) < 8_000L
+        val ourPkg = try { info.showIntent?.creatorPackage == ctx.packageName } catch (_: Exception) { false }
+        if (!ours && !ourPkg && t > now + 2_000L && t < now + 14 * 86_400_000L) return t
     }
-
-    return t
+    val formatted = try {
+        Settings.System.getString(ctx.contentResolver, Settings.System.NEXT_ALARM_FORMATTED)
+    } catch (_: Exception) { null }
+    if (!formatted.isNullOrBlank() && info != null) {
+        val t = info.triggerTime
+        if (t > now && t < now + 14 * 86_400_000L) return t
+    }
+    return null
 }
 
 fun formatAlarm(ctx: Context, t: Long): String {
@@ -99,7 +116,6 @@ private fun formatDuration(ms: Long): String {
     return if (m >= 60) "${m / 60} h ${m % 60} min" else "$m min"
 }
 
-/** One quiet line under the clock: next alarm, battery, time to full charge. */
 @Composable
 fun StatusLine(modifier: Modifier = Modifier) {
     val ctx = LocalContext.current

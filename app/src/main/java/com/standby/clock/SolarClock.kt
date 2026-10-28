@@ -1,118 +1,97 @@
 package com.standby.clock
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
-import androidx.compose.ui.unit.sp
 import java.time.ZonedDateTime
 import kotlin.math.PI
-import kotlin.math.asin
+import kotlin.math.acos
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlin.math.tan
 
-/** Set this to your latitude (degrees north). Time zone is assumed to be centred on your longitude. */
+/** Set this to your latitude (degrees north). Time zone is assumed local. */
 const val SOLAR_LATITUDE = 20.0
 
-private class Stop(val elev: Double, val top: Color, val bottom: Color)
-
-private val Stops = listOf(
-    Stop(-18.0, Color(0xFF03060F), Color(0xFF0B1230)),
-    Stop(-6.0, Color(0xFF1B1E4B), Color(0xFF6B4A7A)),
-    Stop(0.0, Color(0xFF3A4F8F), Color(0xFFF39A5B)),
-    Stop(8.0, Color(0xFF3F78C9), Color(0xFFF7C77E)),
-    Stop(30.0, Color(0xFF2E6FD6), Color(0xFF8CC4FF)),
-)
-
-private fun skyFor(e: Double): Pair<Color, Color> {
-    if (e <= Stops.first().elev) return Stops.first().top to Stops.first().bottom
-    for (i in 0 until Stops.size - 1) {
-        val a = Stops[i]; val b = Stops[i + 1]
-        if (e <= b.elev) {
-            val t = ((e - a.elev) / (b.elev - a.elev)).toFloat()
-            return lerp(a.top, b.top, t) to lerp(a.bottom, b.bottom, t)
-        }
-    }
-    return Stops.last().top to Stops.last().bottom
-}
-
-private fun sunElevationDeg(now: ZonedDateTime): Double {
-    val decl = Math.toRadians(-23.44 * cos(2.0 * PI / 365.0 * (now.dayOfYear + 10)))
-    val hours = now.hour + now.minute / 60.0 + now.second / 3600.0
-    val ha = Math.toRadians(15.0 * (hours - 12.0))
+private fun sunTimes(dayOfYear: Int): Pair<Double, Double> {
+    val decl = Math.toRadians(-23.44 * cos(2.0 * PI / 365.0 * (dayOfYear + 10)))
     val lat = Math.toRadians(SOLAR_LATITUDE)
-    return Math.toDegrees(asin(sin(lat) * sin(decl) + cos(lat) * cos(decl) * cos(ha)))
+    val cosHa = (-tan(lat) * tan(decl)).coerceIn(-1.0, 1.0)
+    val haHours = Math.toDegrees(acos(cosHa)) / 15.0
+    return (12.0 - haHours) to (12.0 + haHours)
 }
 
-/** Sky gradient follows the sun's elevation; the sun travels across the screen. */
+private fun fmtHours(h: Double): String {
+    val total = ((h * 60).toInt() + 24 * 60) % (24 * 60)
+    val hh = total / 60
+    val mm = total % 60
+    val h12 = if (hh % 12 == 0) 12 else hh % 12
+    return "$h12:${"%02d".format(mm)}"
+}
+
 @Composable
 fun SolarClock(modifier: Modifier = Modifier.fillMaxSize()) {
-    val now by rememberNow(1000)
+    val now by rememberNow(1_000)
     val is24 = rememberIs24h()
     val (h, m) = now.hourMinute(is24)
-    val stars = remember {
-        val r = java.util.Random(7)
-        List(70) { Offset(r.nextFloat(), r.nextFloat() * 0.7f) }
-    }
+    val (rise, set) = sunTimes(now.dayOfYear)
     BoxWithConstraints(modifier) {
-        val big = with(LocalDensity.current) { (constraints.maxHeight * 0.30f).toSp() }
+        val big = with(LocalDensity.current) { (minOf(constraints.maxHeight * 0.42f, constraints.maxWidth * 0.28f)).toSp() }
+        val cap = with(LocalDensity.current) { (constraints.maxHeight * 0.045f).toSp() }
         Canvas(Modifier.fillMaxSize()) {
-            val elev = sunElevationDeg(now)
-            val (c1, c2) = skyFor(elev)
-            drawRect(Brush.verticalGradient(listOf(c1, c2)))
-
-            val night = ((-elev - 2.0) / 10.0).coerceIn(0.0, 1.0).toFloat()
-            if (night > 0f) stars.forEach {
-                drawCircle(Color.White.copy(alpha = night * 0.8f), 2.5f, Offset(it.x * size.width, it.y * size.height))
-            }
-
-            // Draw Solar path sinusoidal arc curve
-            val horizonY = size.height * 0.70f
-            val path = androidx.compose.ui.graphics.Path()
-            val steps = 80
-            for (i in 0..steps) {
-                val px = size.width * (i.toFloat() / steps)
-                val testHa = Math.toRadians((i.toFloat() / steps - 0.5) * 360.0)
-                val lat = Math.toRadians(SOLAR_LATITUDE)
-                val decl = Math.toRadians(-23.44 * cos(2.0 * PI / 365.0 * (now.dayOfYear + 10)))
-                val el = Math.toDegrees(asin(sin(lat) * sin(decl) + cos(lat) * cos(decl) * cos(testHa)))
-                val py = horizonY - (el / 90.0).toFloat() * size.height * 0.50f
-                if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
-            }
-            drawPath(
-                path,
-                Color.White.copy(alpha = 0.25f),
-                style = androidx.compose.ui.graphics.drawscope.Stroke(
-                    width = 2.dp.toPx(),
-                    pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(12f, 10f), 0f)
-                )
+            val horizon = size.height * 0.55f
+            drawRect(Brush.verticalGradient(listOf(Color(0xFF0B1F4A), Color(0xFF163A7A)), endY = horizon))
+            drawRect(
+                Brush.verticalGradient(listOf(Color(0xFFE8A020), Color(0xFFC45A10)), startY = horizon),
+                topLeft = Offset(0f, horizon),
             )
-
             val hours = now.hour + now.minute / 60.0 + now.second / 3600.0
-            val ha = Math.toRadians(15.0 * (hours - 12.0))
-            val x = size.width * (0.5f + 0.42f * sin(ha).toFloat())
-            val y = horizonY - (elev / 90.0).toFloat().coerceIn(-0.6f, 1f) * size.height * 0.50f
-            val sun = if (elev > -4) Color(0xFFFFE08A) else Color(0xFFDCE6FF)
-
-            drawCircle(sun.copy(alpha = 0.15f), size.height * 0.18f, Offset(x, y))
-            drawCircle(sun.copy(alpha = 0.35f), size.height * 0.10f, Offset(x, y))
-            drawCircle(sun, size.height * 0.055f, Offset(x, y))
+            val span = (set - rise).coerceAtLeast(0.5)
+            val t = ((hours - rise) / span).toFloat()
+            val sunX = size.width * (0.18f + 0.64f * t.coerceIn(0f, 1f))
+            val sunY = horizon
+            val r = size.height * 0.16f
+            drawCircle(Color(0xFFFFE08A).copy(alpha = 0.18f), r * 1.8f, Offset(sunX, sunY))
+            drawCircle(Color(0xFFFFC94A).copy(alpha = 0.45f), r * 1.15f, Offset(sunX, sunY))
+            drawCircle(Color(0xFFFFD36A), r, Offset(sunX, sunY))
         }
         Text(
-            "$h:$m", color = Color.White, fontSize = big, fontWeight = FontWeight.Bold, letterSpacing = (-0.03).em,
-            modifier = Modifier.align(Alignment.BottomStart).padding(start = 40.dp, bottom = 24.dp),
+            "$h:$m",
+            color = Color.White,
+            fontSize = big,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = (-0.04).em,
+            modifier = Modifier.align(Alignment.Center),
+        )
+        Text(
+            "SUNRISE  ${fmtHours(rise)}",
+            color = Color.White.copy(alpha = 0.9f),
+            fontSize = cap,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 0.08.em,
+            modifier = Modifier.align(Alignment.BottomStart).padding(start = 28.dp, bottom = 20.dp),
+        )
+        Text(
+            "SUNSET  ${fmtHours(set)}",
+            color = Color.White.copy(alpha = 0.9f),
+            fontSize = cap,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 0.08.em,
+            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 28.dp, bottom = 20.dp),
         )
     }
 }

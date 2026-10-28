@@ -14,8 +14,8 @@ android {
         applicationId = "com.standby.clock"
         minSdk = 27
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.1"
+        versionCode = 3
+        versionName = "1.2"
     }
     // Release signing: create keystore.properties next to settings.gradle.kts (see README).
     val ksFile = rootProject.file("keystore.properties")
@@ -31,6 +31,9 @@ android {
         }
     }
     buildTypes {
+        debug {
+            if (ksFile.exists()) signingConfig = signingConfigs.getByName("release")
+        }
         release {
             isMinifyEnabled = false
             if (ksFile.exists()) signingConfig = signingConfigs.getByName("release")

@@ -51,6 +51,7 @@ class MainActivity : ComponentActivity() {
     private var tick by mutableIntStateOf(0)
     private val notifPerm = registerForActivityResult(ActivityResultContracts.RequestPermission()) { tick++ }
     private val calendarPerm = registerForActivityResult(ActivityResultContracts.RequestPermission()) { tick++ }
+    private val bluetoothPerm = registerForActivityResult(ActivityResultContracts.RequestPermission()) { tick++ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,7 +69,6 @@ class MainActivity : ComponentActivity() {
                     val t = tick
 
                     // Permission checks
-                    val canOverlay = remember(t) { Settings.canDrawOverlays(ctx) }
                     val notifOk = remember(t) {
                         Build.VERSION.SDK_INT < 33 ||
                             ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
@@ -80,6 +80,7 @@ class MainActivity : ComponentActivity() {
                     val calendarOk = remember(t) {
                         ContextCompat.checkSelfPermission(ctx, Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED
                     }
+                    val btOk = remember(t) { hasBluetoothPermission(ctx) }
                     val fullScreenOk = remember(t) {
                         Build.VERSION.SDK_INT < 34 || getSystemService(NotificationManager::class.java).canUseFullScreenIntent()
                     }
@@ -99,31 +100,29 @@ class MainActivity : ComponentActivity() {
                     )
 
                     val setAuto: (Boolean) -> Unit = { on ->
-                        if (on && !canOverlay) {
-                            openOverlaySettings()
+                        auto = on
+                        Prefs.setAuto(ctx, on)
+                        if (on) {
+                            askNotificationPermission()
+                            startWatcher()
                         } else {
-                            auto = on
-                            Prefs.setAuto(ctx, on)
-                            if (on) {
-                                askNotificationPermission()
-                                startWatcher()
-                            } else {
-                                stopService(Intent(ctx, OrientationService::class.java))
-                            }
+                            stopService(Intent(ctx, OrientationService::class.java))
                         }
                     }
                     val refreshWatcher = { if (auto) startWatcher() }
 
-                    val oem = remember { Oem.detect() }
-                    var oemDone by remember { mutableStateOf(Prefs.oemDone(ctx)) }
-
-                    // Setup progress
-                    val setupItems = remember(canOverlay, notifOk, batteryOk, oemDone) {
-                        listOf(
-                            SetupItem("Display over apps", "Allows opening the bedside clock automatically", canOverlay) { openOverlaySettings() },
-                            SetupItem("Notifications", "Keeps the landscape sensor service active", notifOk) { askNotificationPermission() },
-                            SetupItem("Unrestricted battery", "Prevents Android from putting sensor to sleep", batteryOk) { openBatterySettings() },
-                        )
+                    val setupItems = remember(notifOk, batteryOk, fullScreenOk) {
+                        buildList {
+                            add(SetupItem("Notifications", "Keeps the landscape sensor service active", notifOk) { askNotificationPermission() })
+                            add(SetupItem("Unrestricted battery", "Prevents Android from putting the sensor to sleep", batteryOk) { openBatterySettings() })
+                            if (Build.VERSION.SDK_INT >= 34) {
+                                add(
+                                    SetupItem("Full-screen alerts", "Opens the clock over the lock screen", fullScreenOk) {
+                                        safeStart(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:$packageName")))
+                                    },
+                                )
+                            }
+                        }
                     }
                     val completedCount = setupItems.count { it.done }
                     val allSetupDone = completedCount == setupItems.size
@@ -431,6 +430,15 @@ class MainActivity : ComponentActivity() {
                                 accent = accent,
                                 onClick = { safeStart(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) },
                             )
+                            Divider2()
+                            SettingActionRow(
+                                title = "Nearby devices",
+                                subtitle = "Battery rings for earbuds, watches and other Bluetooth gear",
+                                status = if (btOk) "Allowed" else "Allow",
+                                isAllowed = btOk,
+                                accent = accent,
+                                onClick = { askBluetoothPermission() },
+                            )
                             if (Build.VERSION.SDK_INT >= 34) {
                                 Divider2()
                                 SettingActionRow(
@@ -491,8 +499,11 @@ class MainActivity : ComponentActivity() {
     private fun openAppInfo() =
         startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
 
-    private fun openOverlaySettings() =
-        safeStart(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+    private fun askBluetoothPermission() {
+        if (Build.VERSION.SDK_INT >= 31 &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED
+        ) bluetoothPerm.launch(Manifest.permission.BLUETOOTH_CONNECT)
+    }
 
     private fun openBatterySettings() =
         safeStart(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))

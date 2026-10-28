@@ -51,7 +51,7 @@ object UiState {
 
     var palette by mutableIntStateOf(0); private set
     var left by mutableStateOf(listOf("analog", "digital")); private set
-    var right by mutableStateOf(listOf("calendar", "date", "weather", "nowplaying", "battery")); private set
+    var right by mutableStateOf(listOf("calendar", "date", "nowplaying", "battery")); private set
     var notes by mutableStateOf(""); private set
     var hideNotif by mutableStateOf(true); private set
     var hideWhenLocked by mutableStateOf(true); private set

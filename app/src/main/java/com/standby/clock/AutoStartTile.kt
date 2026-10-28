@@ -3,7 +3,6 @@ package com.standby.clock
 import android.app.PendingIntent
 import android.content.Intent
 import android.os.Build
-import android.provider.Settings
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import androidx.core.content.ContextCompat
@@ -15,7 +14,6 @@ class AutoStartTile : TileService() {
 
     override fun onClick() {
         val on = !Prefs.autoEnabled(this)
-        if (on && !Settings.canDrawOverlays(this)) { openApp(); return }
         Prefs.setAuto(this, on)
         if (on) {
             try {

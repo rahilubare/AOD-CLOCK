@@ -10,7 +10,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ServiceInfo
-import android.graphics.PixelFormat
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -21,10 +20,6 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.PowerManager
-import android.provider.Settings
-import android.view.Gravity
-import android.view.View
-import android.view.WindowManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -54,7 +49,6 @@ class OrientationService : Service(), SensorEventListener {
     private var notLandscapeSince = 0L
     private var armed = true
     private var mode = 0                 // 0 off, 1 normal, 2 wake-up batched, 3 normal + wake lock
-    private var overlay: View? = null
     private var wakeLock: PowerManager.WakeLock? = null
     private var fallback: Runnable? = null
 
@@ -76,7 +70,6 @@ class OrientationService : Service(), SensorEventListener {
         km = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
         running = true
         startAsForeground()
-        addOverlay()
         val filter = IntentFilter().apply {
             addAction(Intent.ACTION_SCREEN_ON)
             addAction(Intent.ACTION_SCREEN_OFF)
@@ -91,10 +84,8 @@ class OrientationService : Service(), SensorEventListener {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         loadSettings()
-        addOverlay()
         mode = -1            // force re-registration
         updateSensor()
-        if (!Settings.canDrawOverlays(this)) notifyAttention()
         return START_STICKY
     }
 
@@ -104,7 +95,6 @@ class OrientationService : Service(), SensorEventListener {
         sm.unregisterListener(this)
         syncWakeLock(false)
         try { unregisterReceiver(receiver) } catch (e: IllegalArgumentException) { }
-        removeOverlay()
         super.onDestroy()
     }
 
@@ -248,25 +238,7 @@ class OrientationService : Service(), SensorEventListener {
         try { NotificationManagerCompat.from(this).notify(ID_OPEN, n) } catch (e: SecurityException) { }
     }
 
-    /** A permission was lost (for example Android reset it for an unused app): tell the user once in a while. */
-    private fun notifyAttention() {
-        val sp = Prefs.sp(this)
-        val last = sp.getLong("lastWarn", 0L)
-        if (System.currentTimeMillis() - last < 6 * 3_600_000L) return
-        sp.edit().putLong("lastWarn", System.currentTimeMillis()).apply()
-        channel("attention", "Needs attention", NotificationManager.IMPORTANCE_DEFAULT)
-        val pi = PendingIntent.getActivity(this, 3, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
-        val n = NotificationCompat.Builder(this, "attention")
-            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
-            .setContentTitle("StandBy Clock needs a permission")
-            .setContentText("Tap to open the setup guide")
-            .setAutoCancel(true)
-            .setContentIntent(pi)
-            .build()
-        try { NotificationManagerCompat.from(this).notify(ID_ATTENTION, n) } catch (e: SecurityException) { }
-    }
-
-    /* ---------------- foreground notification + overlay ---------------- */
+    /* ---------------- foreground notification ---------------- */
 
     private fun startAsForeground() {
         channel("auto", "Landscape auto-start", NotificationManager.IMPORTANCE_LOW)
@@ -285,35 +257,12 @@ class OrientationService : Service(), SensorEventListener {
         }
     }
 
-    /** A 1x1 transparent overlay: newer Android only allows background launches while an overlay is visible. */
-    private fun addOverlay() {
-        if (overlay != null || !Settings.canDrawOverlays(this)) return
-        val lp = WindowManager.LayoutParams(
-            1, 1, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-            PixelFormat.TRANSLUCENT,
-        ).apply { gravity = Gravity.START or Gravity.TOP }
-        try {
-            val v = View(this)
-            (getSystemService(Context.WINDOW_SERVICE) as WindowManager).addView(v, lp)
-            overlay = v
-        } catch (e: Exception) { /* no permission yet */ }
-    }
 
-    private fun removeOverlay() {
-        overlay?.let {
-            try { (getSystemService(Context.WINDOW_SERVICE) as WindowManager).removeView(it) } catch (e: Exception) { }
-        }
-        overlay = null
-    }
 
     companion object {
         /** True while the watcher process is alive (the main screen shows this). */
         @Volatile var running = false
         private const val LEAVE_MS = 1500L
         private const val ID_OPEN = 2
-        private const val ID_ATTENTION = 3
     }
 }

@@ -115,18 +115,6 @@ private fun SheetContent(view: Int, onDismiss: () -> Unit, onPickPhotos: (() -> 
                             modifier = Modifier.fillMaxWidth(), minLines = 2,
                         )
                     }
-                    Section("Weather city") {
-                        var q by remember { mutableStateOf(WeatherStore.city) }
-                        OutlinedTextField(
-                            value = q, onValueChange = { q = it }, singleLine = true,
-                            placeholder = { Text("City name") }, modifier = Modifier.fillMaxWidth(),
-                        )
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            PillButton("Set city") { WeatherStore.setCity(ctx, q) }
-                            if (WeatherStore.status.isNotEmpty()) Text(WeatherStore.status, color = Muted, fontSize = 13.sp)
-                        }
-                        Text("Weather is fetched online from Open-Meteo. Only the city name is sent.", color = Muted, fontSize = 12.sp)
-                    }
                 }
                 else -> Section("Photo frame") {
                     if (onPickPhotos != null) {

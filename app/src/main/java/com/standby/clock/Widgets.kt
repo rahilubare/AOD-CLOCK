@@ -1,44 +1,32 @@
 package com.standby.clock
 
-import android.content.Intent
-import android.content.IntentFilter
-import android.os.BatteryManager
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.delay
 
 class StandbyWidget(val id: String, val title: String, val content: @Composable (Palette) -> Unit)
 
 /** ADD YOUR OWN WIDGETS HERE: one StandbyWidget(id, title) { palette -> ... } line each. */
 object WidgetCatalog {
     val all: List<StandbyWidget> = listOf(
-        StandbyWidget("analog", "Analog clock") { _ ->
-            Box(Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
-                ClassicAnalog(Modifier.fillMaxSize())
-            }
+        StandbyWidget("analog", "Analog clock") { p ->
+            MinimalAnalog(Modifier.fillMaxSize(), accent = p.light)
         },
-        StandbyWidget("digital", "Digital clock") { p -> BigOverlapClock(p.dark, p.light, Modifier.fillMaxSize().padding(8.dp)) },
+        StandbyWidget("digital", "Digital clock") { p -> BigOverlapClock(p.dark, p.light, Modifier.fillMaxSize()) },
         StandbyWidget("calendar", "Calendar") { _ -> CalendarWidget() },
-        StandbyWidget("date", "Date") { _ -> BigDate(Modifier.fillMaxSize().padding(16.dp)) },
-        StandbyWidget("battery", "Battery") { p -> BatteryWidget(p) },
+        StandbyWidget("date", "Date") { _ -> BigDate(Modifier.fillMaxSize().padding(8.dp)) },
+        StandbyWidget("battery", "Batteries") { p -> DevicesBatteryWidget(p) },
         StandbyWidget("notes", "Reminders") { _ -> NotesWidget() },
-        StandbyWidget("weather", "Weather") { _ -> WeatherWidget() },
         StandbyWidget("nowplaying", "Now playing") { _ -> NowPlayingWidget() },
         StandbyWidget("upnext", "Calendar events") { _ -> UpNextWidget() },
     )
@@ -74,39 +62,14 @@ fun WidgetStack(ids: List<String>, palette: Palette, modifier: Modifier = Modifi
 
 @Composable
 private fun CalendarWidget() {
-    val now by rememberNow(60_000)
-    MonthGrid(now.toLocalDate(), Modifier.fillMaxSize().padding(20.dp))
-}
-
-@Composable
-private fun BatteryWidget(p: Palette) {
-    val ctx = LocalContext.current
-    var pct by remember { mutableIntStateOf(0) }
-    var charging by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            val i = ctx.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-            if (i != null) {
-                val level = i.getIntExtra(BatteryManager.EXTRA_LEVEL, 0)
-                val scale = i.getIntExtra(BatteryManager.EXTRA_SCALE, 100)
-                pct = level * 100 / scale
-                val st = i.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
-                charging = st == BatteryManager.BATTERY_STATUS_CHARGING || st == BatteryManager.BATTERY_STATUS_FULL
-            }
-            delay(15_000)
-        }
-    }
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.fillMaxSize().padding(24.dp)) {
-            val s = size.minDimension * 0.85f
-            val tl = Offset(center.x - s / 2f, center.y - s / 2f)
-            val stroke = Stroke(width = s * 0.07f, cap = StrokeCap.Round)
-            drawArc(Color(0x33FFFFFF), -90f, 360f, false, tl, Size(s, s), style = stroke)
-            drawArc(p.light, -90f, 360f * pct / 100f, false, tl, Size(s, s), style = stroke)
-        }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("$pct%", color = Color.White, fontSize = 54.sp, fontWeight = FontWeight.Bold)
-            Text(if (charging) "Charging" else "Battery", color = Color(0xFF8E8E93), fontSize = 18.sp)
+    val today by rememberNow(60_000)
+    val todayDate = today.toLocalDate()
+    val start = 24
+    val pager = rememberPagerState(initialPage = start) { 49 }
+    Box(Modifier.fillMaxSize()) {
+        HorizontalPager(pager, Modifier.fillMaxSize()) { page ->
+            val month = todayDate.withDayOfMonth(1).plusMonths((page - start).toLong())
+            MonthGrid(month, todayDate, Modifier.fillMaxSize().padding(12.dp))
         }
     }
 }

@@ -44,7 +44,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun StandbyScreen(onBrightness: (Float) -> Unit, onPickPhotos: (() -> Unit)? = null, onClose: () -> Unit = {}) {
     val context = LocalContext.current
-    remember { UiState.init(context); TimerState.restore(context); WeatherStore.init(context); true }
+    remember { UiState.init(context); TimerState.restore(context); true }
     val palette = Palettes[UiState.palette.coerceIn(0, Palettes.lastIndex)]
 
     val viewPager = rememberPagerState(initialPage = Prefs.page(context).coerceIn(0, 2)) { 3 }
